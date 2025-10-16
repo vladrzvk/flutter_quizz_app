@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  postgres-map:
+    image: postgis/postgis:15-3.3
+    environment:
+      POSTGRES_DB: map_db
+      POSTGRES_USER: map_user
+      POSTGRES_PASSWORD: dev_password
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres-map-data:/var/lib/postgresql/data
+
+  postgres-geo:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: geo_db
+      POSTGRES_USER: geo_user
+      POSTGRES_PASSWORD: dev_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-geo-data:/var/lib/postgresql/data
+
+  postgres-quiz:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: quiz_db
+      POSTGRES_USER: quiz_user
+      POSTGRES_PASSWORD: dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-quiz-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+volumes:
+  postgres-map-data:
+  postgres-geo-data:
+  postgres-quiz-data:
+  redis-data:
