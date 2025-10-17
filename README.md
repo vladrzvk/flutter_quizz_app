@@ -27,7 +27,8 @@ Clean Architecture : Application Flutter avec séparation stricte des couches po
 
 1.3 Stack Technologique
 
-Couche Technologies 
+Technologies : 
+
 Frontend MobileFlutter 3.16+,Dart 3.2+ 
 Architecture Mobile Clean Architecture (Domain/Data/Presentation) 
 State ManagementBloc 8.1+ / Freezed / Injectable
@@ -38,6 +39,6 @@ Base de Données PostgreSQL 15+, PostGIS 3.3+CacheRedis 7+
 Conteneurisation Docker 24+
 Orchestration Kubernetes 1.28+
 IaC Terraform 1.5+
-CI/CDGitHub Actions, Codemagic
+CI/CD GitHub Actions, Codemagic
 Monitoring Prometheus, Grafana, Loki
 
