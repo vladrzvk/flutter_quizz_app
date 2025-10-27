@@ -1,0 +1,75 @@
+mod config;
+mod dto;
+mod handlers;
+mod models;
+mod plugins;        // 🆕 Plugin system
+mod repositories;
+mod routes;
+mod services;
+
+use config::Config;
+use plugins::PluginRegistry;  // 🆕
+use sqlx::PgPool;
+use std::net::SocketAddr;
+use std::sync::Arc;
+use tower_http::cors::CorsLayer;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+/// 🆕 App State avec Plugin Registry
+#[derive(Clone)]
+pub struct AppState {
+    pub pool: PgPool,
+    pub plugin_registry: Arc<PluginRegistry>,
+}
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    // Configuration
+    let config = Config::from_env();
+
+    // Tracing
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "quiz_service=debug,tower_http=debug,sqlx=info".into()),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+
+    // Database
+    tracing::info!("🔌 Connecting to database...");
+    let pool = PgPool::connect(&config.database_url).await?;
+    tracing::info!("✅ Connected to database");
+
+    // 🆕 Plugin Registry
+    tracing::info!("🔌 Initializing plugin registry...");
+    let plugin_registry = PluginRegistry::new();
+
+    // TODO: Enregistrer GeographyPlugin (Jour 2)
+    // plugin_registry.register(Arc::new(GeographyPlugin));
+
+    tracing::info!(
+        "✅ Plugin registry initialized with {} plugins",
+        plugin_registry.count()
+    );
+
+    // App State
+    let app_state = AppState {
+        pool,
+        plugin_registry: Arc::new(plugin_registry),
+    };
+
+    // Routes avec CORS
+    let app = routes::create_router(app_state).layer(CorsLayer::permissive());
+
+    // Server
+    let addr = SocketAddr::from(([127, 0, 0, 1], config.server_port));
+    tracing::info!("🚀 Quiz Core Service listening on {}", addr);
+    tracing::info!("📍 API: http://localhost:{}/api/v1", config.server_port);
+    tracing::info!("📍 Health: http://localhost:{}/health", config.server_port);
+
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, app).await?;
+
+    Ok(())
+}

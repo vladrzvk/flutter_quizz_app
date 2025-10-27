@@ -1,150 +1,293 @@
 5.1 Structure du Workspace Cargo
 
-backend/
-├── Cargo.toml                    # Workspace root
-├── .cargo/
-│   └── config.toml
-├── docker-compose.yml            # Dev local
-├── shared/                       # Crate partagé
-│   ├── Cargo.toml
-│   └── src/
-│       ├── lib.rs
-│       ├── models/               # DTOs communs
-│       │   ├── mod.rs
-│       │   ├── geojson.rs
-│       │   └── pagination.rs
-│       ├── errors/               # Gestion d'erreurs commune
-│       │   ├── mod.rs
-│       │   └── api_error.rs
-│       ├── middleware/           # Middleware communs
-│       │   ├── mod.rs
-│       │   ├── auth.rs
-│       │   ├── cors.rs
-│       │   └── logging.rs
-│       └── utils/                # Utilitaires
-│           ├── mod.rs
-│           ├── crypto.rs
-│           └── validation.rs
-│
-├── map_service/                  # Service Carte
-│   ├── Cargo.toml
-│   ├── Dockerfile
-│   ├── migrations/               # sqlx migrations
-│   │   ├── 001_create_geometries.sql
-│   │   ├── 002_create_collections.sql
-│   │   └── 003_create_layers.sql
-│   └── src/
-│       ├── main.rs
-│       ├── config.rs             # Configuration
-│       ├── models/               # Domain models
-│       │   ├── mod.rs
-│       │   ├── geometry.rs
-│       │   ├── collection.rs
-│       │   └── layer.rs
-│       ├── repositories/         # Data access
-│       │   ├── mod.rs
-│       │   ├── geometry_repo.rs
-│       │   ├── collection_repo.rs
-│       │   └── layer_repo.rs
-│       ├── services/             # Business logic
-│       │   ├── mod.rs
-│       │   ├── spatial_service.rs
-│       │   ├── tile_service.rs
-│       │   └── collection_service.rs
-│       ├── handlers/             # HTTP handlers
-│       │   ├── mod.rs
-│       │   ├── geometry_handler.rs
-│       │   ├── collection_handler.rs
-│       │   ├── spatial_handler.rs
-│       │   └── tile_handler.rs
-│       ├── dto/                  # Data Transfer Objects
-│       │   ├── mod.rs
-│       │   ├── geometry_dto.rs
-│       │   └── collection_dto.rs
-│       └── routes.rs             # Route definitions
-│
-├── geography_service/            # Service Géographie
-│   ├── Cargo.toml
-│   ├── Dockerfile
-│   ├── migrations/
-│   │   ├── 001_create_regions.sql
-│   │   └── 002_create_translations.sql
-│   └── src/
-│       ├── main.rs
-│       ├── config.rs
-│       ├── models/
-│       │   ├── mod.rs
-│       │   ├── region.rs
-│       │   └── translation.rs
-│       ├── repositories/
-│       │   ├── mod.rs
-│       │   └── region_repo.rs
-│       ├── services/
-│       │   ├── mod.rs
-│       │   ├── geography_service.rs
-│       │   └── translation_service.rs
-│       ├── clients/              # Clients vers autres services
-│       │   ├── mod.rs
-│       │   └── map_client.rs
-│       ├── handlers/
-│       │   ├── mod.rs
-│       │   └── region_handler.rs
-│       ├── dto/
-│       │   ├── mod.rs
-│       │   └── region_dto.rs
-│       └── routes.rs
-│
-├── quiz_service/                 # Service Quiz
-│   ├── Cargo.toml
-│   ├── Dockerfile
-│   ├── migrations/
-│   │   ├── 001_create_quizzes.sql
-│   │   ├── 002_create_questions.sql
-│   │   ├── 003_create_reponses.sql
-│   │   └── 004_create_sessions.sql
-│   └── src/
-│       ├── main.rs
-│       ├── config.rs
-│       ├── models/
-│       │   ├── mod.rs
-│       │   ├── quiz.rs
-│       │   ├── question.rs
-│       │   ├── reponse.rs
-│       │   └── session.rs
-│       ├── repositories/
-│       │   ├── mod.rs
-│       │   ├── quiz_repo.rs
-│       │   ├── question_repo.rs
-│       │   └── session_repo.rs
-│       ├── services/
-│       │   ├── mod.rs
-│       │   ├── quiz_service.rs
-│       │   ├── session_service.rs
-│       │   └── validation_service.rs
-│       ├── clients/
-│       │   ├── mod.rs
-│       │   ├── geography_client.rs
-│       │   └── map_client.rs
-│       ├── handlers/
-│       │   ├── mod.rs
-│       │   ├── quiz_handler.rs
-│       │   └── session_handler.rs
-│       ├── dto/
-│       │   ├── mod.rs
-│       │   ├── quiz_dto.rs
-│       │   └── session_dto.rs
-│       └── routes.rs
-│
-└── api_gateway/                  # API Gateway (optionnel si Envoy)
-├── Cargo.toml
-├── Dockerfile
-└── src/
-├── main.rs
-├── config.rs
-├── middleware/
-│   ├── mod.rs
-│   ├── auth.rs
-│   └── rate_limiting.rs
-├── proxy/
-│   ├── mod.rs
-│   └── router.rs
+### SCHÉMA D'ARCHITECTURE BACKEND PLUG AND PLAY V0 : Vue d'ensemble : Comment tout s'articule
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                          CLIENT (Flutter)                           │
+└────────────────────────────────┬────────────────────────────────────┘
+                                │
+                   HTTP Request │ POST /api/v1/sessions/:id/answers
+                                │ Body: { question_id, answer, time }
+                                ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                         AXUM ROUTER                                 │
+│  src/routes.rs                                                      │
+│  ┌───────────────────────────────────────────────────────────────┐ │
+│  │ Route: POST /sessions/:id/answers                             │ │
+│  │   → Handler: submit_answer_handler                            │ │
+│  │   → State: AppState (pool + plugin_registry)                  │ │
+│  └───────────────────────────────────────────────────────────────┘ │
+└────────────────────────────────┬────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                         HANDLER LAYER                               │
+│  src/handlers/session_handler.rs                                    │
+│                                                                     │
+│  pub async fn submit_answer_handler(                                │
+│      State(app_state): State<AppState>,  ← REÇOIT AppState          │
+│      Path(session_id): Path<Uuid>,                                  │
+│      Json(payload): Json<SubmitAnswerRequest>                       │
+│  ) -> Result<...>                                                   │
+│                                                                     │
+│  1. Extraire pool et plugin_registry de app_state                   │
+│  2. Appeler le SERVICE                                              │
+│                                                                     │
+└────────────────────────────────┬────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                         SERVICE LAYER                               │
+│  src/services/session_service.rs                                    │
+│                                                                     │
+│  SessionService::submit_answer(                                     │
+│      pool,                                                          │
+│      plugin_registry,  ← REÇOIT le registry                         │
+│      session_id,                                                    │
+│      payload                                                        │
+│  )                                                                  │
+│                                                                     │
+│  LOGIQUE MÉTIER:                                                    │
+│  1. Récupérer la session                                            │
+│  2. Récupérer le quiz                                               │
+│  3. Récupérer le plugin du domaine → plugin_registry.get(domain)    │
+│  4. Récupérer la question                                           │
+│  5. VALIDER avec le plugin → plugin.validate_answer(...)            │
+│  6. SCORER avec le plugin → plugin.calculate_score(...)             │
+│  7. Sauvegarder la réponse                                          │
+│                                                                     │
+└───────────┬───────────────────────────────────┬─────────────────────┘
+│                                   │
+│ 3. Get Plugin                     │ 5. Validate
+▼                                   ▼
+┌───────────────────────────┐     ┌────────────────────────────────┐
+│   PLUGIN REGISTRY         │     │   GEOGRAPHY PLUGIN             │
+│   src/plugins/registry.rs │     │   geography_plugin/src/lib.rs  │
+│                           │     │                                │
+│  HashMap<String, Plugin>  │     │  impl QuizPlugin {             │
+│  ┌─────────────────────┐  │     │    fn domain_name() -> "geo"   │
+│  │ "geography" → Plugin│  │     │                                │
+│  │ "code_route" → ...  │  │     │    async fn validate_answer()  │
+│  └─────────────────────┘  │     │      match type_question {     │
+│                           │     │        "qcm" → validate_qcm    │
+│  registry.get("geography")│     │        "carte" → validate_map  │
+│    → Arc<GeographyPlugin> │     │        ...                     │
+│                           │     │      }                         │
+└───────────────────────────┘     │                                │
+                                  │    fn calculate_score()        │
+                                  │      → bonus vitesse, streak   │
+                                  └────────────────────────────────┘
+                                    │
+                                    │ SQL Queries
+                                    ▼
+┌──────────────────────────────────────┐
+│   REPOSITORY LAYER                   │
+│   src/repositories/                  │
+│                                      │
+│  QuizRepository::find_by_id()        │
+│  SessionRepository::create_answer()  │
+│  ReponseRepository::is_correct()     │
+│                                      │
+└──────────────┬───────────────────────┘
+                │
+                │ sqlx queries
+                ▼
+┌──────────────────────────────────────┐
+│        PostgreSQL                    │
+│                                      │
+│  Tables:                             │
+│   - quizzes (domain column)          │
+│   - questions (media_url, target_id) │
+│   - reponses                         │
+│   - sessions_quiz                    │
+│   - reponses_utilisateur             │
+└──────────────────────────────────────┘
+
+
+### FLOW DÉTAILLÉ : Soumettre une Réponse : 
+Étape par étape avec le Plugin System
+   ┌─────────────────────────────────────────────────────────────────────┐
+   │ 1. CLIENT envoie la réponse                                         │
+   └─────────────────────────────────────────────────────────────────────┘
+   POST /api/v1/sessions/abc-123/answers
+   {
+   "question_id": "def-456",
+   "reponse_id": "ghi-789",  // Pour QCM
+   "temps_reponse_sec": 8
+   }
+                               │
+                               ▼
+   ┌─────────────────────────────────────────────────────────────────────┐
+   │ 2. ROUTER dispatche vers le handler                                 │
+   └─────────────────────────────────────────────────────────────────────┘
+   routes.rs: route("/sessions/:session_id/answers", post(handler))
+
+   Handler reçoit:
+    - State(app_state) ← CONTIENT pool + plugin_registry
+    - Path(session_id)
+   - Json(payload)
+                                 │
+                                 ▼
+     ┌─────────────────────────────────────────────────────────────────────┐
+     │ 3. HANDLER extrait les données et appelle le SERVICE                │
+     └─────────────────────────────────────────────────────────────────────┘
+     session_handler.rs:
+
+      pub async fn submit_answer_handler(
+      State(app_state): State<AppState>,
+      Path(session_id): Path<Uuid>,
+      Json(payload): Json<SubmitAnswerRequest>
+      ) {
+      // Appeler le service
+      let result = SessionService::submit_answer(
+      &app_state.pool,
+      &app_state.plugin_registry,  ← PASSE le registry
+      session_id,
+      &payload
+      ).await?;
+
+        Ok(Json(result))
+      }
+                                  │
+                                  ▼
+      ┌─────────────────────────────────────────────────────────────────────┐
+      │ 4. SERVICE - LOGIQUE MÉTIER                                         │
+      └─────────────────────────────────────────────────────────────────────┘
+      session_service.rs:
+
+      pub async fn submit_answer(
+      pool: &PgPool,
+      plugin_registry: &Arc<PluginRegistry>,
+      session_id: Uuid,
+      payload: &SubmitAnswerRequest
+      ) {
+      // A. Récupérer la session
+      let session = SessionRepository::find_by_id(pool, session_id).await?;
+
+        // B. Récupérer le quiz pour connaître le DOMAIN
+        let quiz = QuizRepository::find_by_id(pool, session.quiz_id).await?;
+       
+        // C. RÉCUPÉRER LE PLUGIN du domaine
+        let plugin = plugin_registry
+            .get(&quiz.domain)  ← "geography"
+            .ok_or(AppError::PluginNotFound)?;
+       
+        // D. Récupérer la question
+        let question = QuestionRepository::find_by_id(
+            pool, 
+            payload.question_id
+        ).await?;
+       
+        // E. VALIDER avec le plugin
+        let validation = plugin.validate_answer(
+            pool,
+            &question,
+            payload
+        ).await?;
+       
+        // F. CALCULER le score avec le plugin
+        let score = plugin.calculate_score(
+            question.points,
+            &validation,
+            payload.temps_reponse_sec,
+            question.temps_limite_sec,
+            session.current_streak
+        );
+       
+        // G. Sauvegarder la réponse
+        let answer = SessionRepository::create_user_answer(
+            pool,
+            session.id,
+            question.id,
+            payload.reponse_id,
+            validation.is_correct,
+            score,
+            payload.temps_reponse_sec
+        ).await?;
+       
+        Ok(answer)
+      }
+                              │
+                              ▼
+      ┌─────────────────────────────────────────────────────────────────────┐
+      │ 5. PLUGIN - Validation spécifique au domaine                        │
+      └─────────────────────────────────────────────────────────────────────┘
+      geography_plugin.rs:
+
+      impl QuizPlugin for GeographyPlugin {
+      async fn validate_answer(
+      pool: &PgPool,
+      question: &Question,
+      answer: &SubmitAnswerRequest
+      ) -> ValidationResult {
+      // Switch selon le type de question
+      match question.type_question.as_str() {
+      "qcm" => self.validate_qcm(pool, question, answer).await,
+      "vrai_faux" => self.validate_vrai_faux(...).await,
+      "carte_cliquable" => {
+      // LOGIQUE SPÉCIFIQUE GÉO
+      // - Vérifier coordonnées GPS
+      // - Calculer distance
+      // - Tolérance en mètres
+      self.validate_map_click(...).await
+      },
+      _ => default_validation(...)
+      }
+      }
+      }
+
+                              │
+                              ▼
+      ┌─────────────────────────────────────────────────────────────────────┐
+      │ 6. REPOSITORY - SQL Queries                                        │
+      └─────────────────────────────────────────────────────────────────────┘
+      reponse_repository.rs:
+
+      SELECT is_correct
+      FROM reponses
+      WHERE id = $1 AND question_id = $2
+                              │
+                              ▼
+      ┌─────────────────────────────────────────────────────────────────────┐
+      │ 7. POSTGRESQL - Database                                           │
+      └─────────────────────────────────────────────────────────────────────┘
+      Exécute la requête SQL
+      Retourne: is_correct = true
+
+
+### A. AppState (Le Conteneur)
+### B. PluginRegistry (L'annuaire)
+### C. QuizPlugin Trait (Le contrat)
+### D. Flow de Données
+```
+Request
+   ↓ 
+Handler
+   ↓ (passe app_state)
+Service
+   ↓ (utilise plugin_registry.get(domain))
+Plugin
+   ↓ (implémente validate_answer)
+Repository
+   ↓
+Database
+
+cad
+
+Request → Handler → Service → Plugin → Repository → Database
+   ↓         ↓         ↓         ↓          ↓           ↓
+  JSON    Extract   Business  Domain    SQL Query   PostgreSQL
+          State     Logic     Logic
+
+
+**Avant le Plugin System :**
+
+Service → Repository → Database
+
+
+**Maintenant :**
+
+Service → PluginRegistry.get(domain) → Plugin.validate() → Repository → Database
+
+```
+

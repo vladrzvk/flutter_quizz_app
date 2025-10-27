@@ -1,4 +1,4 @@
-# flutter_geo_app
+# flutter_quizz_app
 geo_app_quizz
 
 1.1 Objectifs
