@@ -1,6 +1,5 @@
 [workspace]
-members = ["geography_service",
-    "map_service", "quiz_service", "shared",
+members = ["quiz_core_service", "shared",
 ]
 resolver = "2"
 

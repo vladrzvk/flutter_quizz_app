@@ -3,11 +3,11 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use serde::{Deserialize, Serialize};
-use thiserror::Error;
+use serde_json::json;
 
-/// Erreurs personnalisées de l'application
-#[derive(Error, Debug)]
+pub type AppResult<T> = Result<T, AppError>;
+
+#[derive(Debug, thiserror::Error)]
 pub enum AppError {
     #[error("Database error: {0}")]
     Database(#[from] sqlx::Error),
@@ -19,55 +19,34 @@ pub enum AppError {
     BadRequest(String),
 
     #[error("Internal server error: {0}")]
-    Internal(String),
+    InternalServerError(String),
+
+    #[error("Plugin not found for domain")]
+    PluginNotFound,
 }
 
-/// Structure pour les réponses d'erreur JSON
-#[derive(Serialize, Deserialize)]
-pub struct ErrorResponse {
-    pub error: String,
-    pub message: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub details: Option<String>,
-}
-
-/// Conversion de AppError en réponse HTTP
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        let (status, error_type, message) = match self {
+        let (status, error_message) = match self {
             AppError::Database(ref e) => {
                 tracing::error!("Database error: {:?}", e);
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "database_error",
-                    self.to_string(),
-                )
+                (StatusCode::INTERNAL_SERVER_ERROR, "Database error")
             }
-            AppError::NotFound(ref msg) => {
-                (StatusCode::NOT_FOUND, "not_found", msg.clone())
+            AppError::NotFound(_) => (StatusCode::NOT_FOUND, "Resource not found"),
+            AppError::BadRequest(_) => (StatusCode::BAD_REQUEST, "Bad request"),
+            AppError::InternalServerError(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error")
             }
-            AppError::BadRequest(ref msg) => {
-                (StatusCode::BAD_REQUEST, "bad_request", msg.clone())
-            }
-            AppError::Internal(ref msg) => {
-                tracing::error!("Internal error: {}", msg);
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "internal_error",
-                    msg.clone(),
-                )
+            AppError::PluginNotFound => {
+                (StatusCode::INTERNAL_SERVER_ERROR, "Plugin not found")
             }
         };
 
-        let body = Json(ErrorResponse {
-            error: error_type.to_string(),
-            message,
-            details: None,
-        });
+        let body = Json(json!({
+            "error": error_message,
+            "details": self.to_string(),
+        }));
 
         (status, body).into_response()
     }
 }
-
-/// Type Result personnalisé
-pub type Result<T> = std::result::Result<T, AppError>;
