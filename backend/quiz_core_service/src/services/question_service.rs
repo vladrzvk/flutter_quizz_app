@@ -11,19 +11,17 @@ use crate::{
 pub struct QuestionService;
 
 impl QuestionService {
-    /// Récupérer toutes les questions d'un quiz
     pub async fn get_by_quiz_id(pool: &PgPool, quiz_id: Uuid) -> Result<Vec<Question>, AppError> {
         Ok(QuestionRepository::find_by_quiz_id(pool, quiz_id).await?)
     }
 
-    /// Récupérer une question par ID
     pub async fn get_by_id(pool: &PgPool, id: Uuid) -> Result<Question, AppError> {
         QuestionRepository::find_by_id(pool, id)
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Question with id {} not found", id)))
     }
 
-    /// Créer une nouvelle question
+    /// ✅ Créer question (avec category/subcategory)
     pub async fn create(
         pool: &PgPool,
         request: CreateQuestionRequest,
@@ -34,8 +32,10 @@ impl QuestionService {
             request.ordre,
             &request.type_question,
             &request.question_data,
-            request.media_url.as_deref(),  // ✅ NOUVEAU
-            request.target_id,              // ✅ CHANGÉ (avant: region_cible_id)
+            request.media_url.as_deref(),
+            request.target_id,
+            request.category.as_deref(),        // ✅ NOUVEAU
+            request.subcategory.as_deref(),     // ✅ NOUVEAU
             request.points,
             request.temps_limite_sec,
             request.hint.as_deref(),
@@ -46,7 +46,7 @@ impl QuestionService {
         Ok(question)
     }
 
-    /// Mettre à jour une question
+    /// ✅ Mettre à jour question
     pub async fn update(
         pool: &PgPool,
         id: Uuid,
@@ -57,8 +57,10 @@ impl QuestionService {
             id,
             &request.type_question,
             &request.question_data,
-            request.media_url.as_deref(),  // ✅ NOUVEAU
-            request.target_id,              // ✅ CHANGÉ (avant: region_cible_id)
+            request.media_url.as_deref(),
+            request.target_id,
+            request.category.as_deref(),        // ✅ NOUVEAU
+            request.subcategory.as_deref(),     // ✅ NOUVEAU
             request.points,
             request.temps_limite_sec,
             request.hint.as_deref(),
@@ -70,7 +72,6 @@ impl QuestionService {
         Ok(question)
     }
 
-    /// Supprimer une question
     pub async fn delete(pool: &PgPool, id: Uuid) -> Result<(), AppError> {
         QuestionRepository::delete(pool, id).await?;
         Ok(())

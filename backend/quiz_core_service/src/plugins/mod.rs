@@ -1,5 +1,7 @@
 mod plugin_trait;
-mod registery;
+mod registry;
+mod geography;
 
-pub use plugin_trait::QuizPlugin;
-pub use registery::PluginRegistry;
+pub use plugin_trait::{QuizPlugin, ValidationResult};
+pub use registry::PluginRegistry;
+pub use geography::GeographyPlugin;

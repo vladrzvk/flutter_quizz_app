@@ -8,7 +8,7 @@ mod routes;
 mod services;
 
 use config::Config;
-use plugins::PluginRegistry;  // 🆕
+use plugins::{PluginRegistry, GeographyPlugin}; // 🆕
 use sqlx::PgPool;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -40,6 +40,12 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("🔌 Connecting to database...");
     let pool = PgPool::connect(&config.database_url).await?;
     tracing::info!("✅ Connected to database");
+
+    // 🆕 Plugin Registry
+    tracing::info!("🔌 Initializing plugin registry...");
+    let mut plugin_registry = PluginRegistry::new();
+    // 🆕 Enregistrer Geography Plugin
+    plugin_registry.register(Arc::new(GeographyPlugin));
 
     // 🆕 Plugin Registry
     tracing::info!("🔌 Initializing plugin registry...");
