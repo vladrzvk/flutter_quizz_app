@@ -164,13 +164,13 @@ class _QuizSessionPageState extends State<QuizSessionPage> {
                 const SizedBox(height: 24),
 
                 // Options de réponse
-                ...question.options.map((option) {
+                ...?question.reponses?.map((option) {
                   return AnswerButton(
-                    text: option,
-                    isSelected: _selectedAnswer == option,
+                    text: option.valeur!,
+                    isSelected: _selectedAnswer == option.id,
                     onTap: () {
                       setState(() {
-                        _selectedAnswer = option;
+                        _selectedAnswer = option.valeur;
                       });
                     },
                   );

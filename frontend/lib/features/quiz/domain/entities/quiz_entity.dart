@@ -1,79 +1,74 @@
 import 'package:equatable/equatable.dart';
 
-/// Entity représentant un Quiz dans le domaine métier
 class QuizEntity extends Equatable {
   final String id;
+  final String domain;
   final String titre;
   final String? description;
   final String niveauDifficulte;
   final String versionApp;
-  final String regionScope;
+  final String scope;
   final String mode;
+  final String? collectionId;
   final int nbQuestions;
   final int? tempsLimiteSec;
+  final int? scoreMinimumSuccess;
   final bool isActive;
+  final bool? isPublic;
+  final int? totalAttempts;
+  final double? averageScore;
   final DateTime createdAt;
+  final DateTime? updatedAt;
 
   const QuizEntity({
     required this.id,
+    required this.domain,
     required this.titre,
     this.description,
     required this.niveauDifficulte,
     required this.versionApp,
-    required this.regionScope,
+    required this.scope,
     required this.mode,
+    this.collectionId,
     required this.nbQuestions,
     this.tempsLimiteSec,
+    this.scoreMinimumSuccess,
     required this.isActive,
+    this.isPublic,
+    this.totalAttempts,
+    this.averageScore,
     required this.createdAt,
+    this.updatedAt,
   });
 
   @override
-  List<Object?> get props => [
-    id,
-    titre,
-    description,
-    niveauDifficulte,
-    versionApp,
-    regionScope,
-    mode,
-    nbQuestions,
-    tempsLimiteSec,
-    isActive,
-    createdAt,
-  ];
+  List<Object?> get props => [id, domain, titre, scope, mode];
 
-  // 🎯 MÉTHODES MÉTIER (Business Logic)
-
-  /// Vérifie si le quiz est disponible pour être joué
-  bool get isAvailable => isActive && nbQuestions > 0;
-
-  /// Vérifie si c'est un quiz V0 (texte uniquement)
-  bool get isV0 => versionApp == 'v0' && mode == 'texte';
-
-  /// Label de difficulté formaté
-  String get difficultyLabel {
-    switch (niveauDifficulte.toLowerCase()) {
-      case 'facile':
-        return 'Facile';
-      case 'moyen':
-        return 'Moyen';
-      case 'difficile':
-        return 'Difficile';
-      default:
-        return niveauDifficulte;
+  // Helpers
+  String get difficultyEmoji {
+    switch (niveauDifficulte) {
+      case 'facile': return '🟢';
+      case 'moyen': return '🟡';
+      case 'difficile': return '🔴';
+      default: return '⚪';
     }
   }
 
-  /// Durée estimée en minutes
-  int get estimatedDurationMinutes {
-    if (tempsLimiteSec != null) {
-      return (tempsLimiteSec! / 60).ceil();
+  String get domainEmoji {
+    switch (domain) {
+      case 'geography': return '🌍';
+      case 'code_route': return '🚗';
+      default: return '📚';
     }
-    // Estimation: 30 secondes par question
-    return ((nbQuestions * 30) / 60).ceil();
   }
 
-  /// Vérifie si le quiz a une limite de temps
-  bool get hasTimeLimit => tempsLimiteSec != null && tempsLimiteSec! > 0;
+  String get modeLabel {
+    switch (mode) {
+      case 'decouverte': return 'Découverte';
+      case 'entrainement': return 'Entraînement';
+      case 'examen': return 'Examen';
+      case 'competition': return 'Compétition';
+      default: return mode;
+    }
+  }
 }

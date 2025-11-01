@@ -1,74 +1,75 @@
 import 'package:equatable/equatable.dart';
+import 'package:flutter_geo_app/features/quiz/domain/entities/reponse_entity.dart';
+import 'reponse_entity.dart';
 
-/// Entity représentant une Question dans le domaine métier
 class QuestionEntity extends Equatable {
   final String id;
   final String quizId;
   final int ordre;
+  final String? category;
+  final String? subcategory;
   final String typeQuestion;
-  final String questionText;
-  final List<String> options;
+  final Map<String, dynamic> questionData;
+  final String? mediaUrl;
+  final String? targetId;
   final int points;
   final int? tempsLimiteSec;
   final String? hint;
   final String? explanation;
+  final Map<String, dynamic>? metadata;
+  final int? totalAttempts;
+  final int? correctAttempts;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+  final List<ReponseEntity>? reponses;
 
   const QuestionEntity({
     required this.id,
     required this.quizId,
     required this.ordre,
+    this.category,
+    this.subcategory,
     required this.typeQuestion,
-    required this.questionText,
-    required this.options,
+    required this.questionData,
+    this.mediaUrl,
+    this.targetId,
     required this.points,
     this.tempsLimiteSec,
     this.hint,
     this.explanation,
+    this.metadata,
+    this.totalAttempts,
+    this.correctAttempts,
+    this.createdAt,
+    this.updatedAt,
+    this.reponses,
   });
 
   @override
-  List<Object?> get props => [
-    id,
-    quizId,
-    ordre,
-    typeQuestion,
-    questionText,
-    options,
-    points,
-    tempsLimiteSec,
-    hint,
-    explanation,
-  ];
+  List<Object?> get props => [id, quizId, ordre, typeQuestion];
 
-  // 🎯 MÉTHODES MÉTIER
+  // Helpers
+  String get questionText => questionData['text'] as String? ?? '';
+  String? get questionImage => questionData['image'] as String?;
 
-  /// Numéro de la question (commence à 1)
-  int get questionNumber => ordre + 1;
-
-  /// Vérifie si la question a des options de réponse
-  bool get hasOptions => options.isNotEmpty;
-
-  /// Vérifie si la question a un indice
   bool get hasHint => hint != null && hint!.isNotEmpty;
-
-  /// Vérifie si la question a une explication
   bool get hasExplanation => explanation != null && explanation!.isNotEmpty;
+  bool get hasTimeLimit => tempsLimiteSec != null;
+  bool get hasReponses => reponses != null && reponses!.isNotEmpty;
 
-  /// Vérifie si la question a une limite de temps
-  bool get hasTimeLimit => tempsLimiteSec != null && tempsLimiteSec! > 0;
+  // Types
+  bool get isQcm => typeQuestion == 'qcm';
+  bool get isVraiFaux => typeQuestion == 'vrai_faux';
+  bool get isSaisieTexte => typeQuestion == 'saisie_texte';
+  bool get isCarteCliquable => typeQuestion == 'carte_cliquable';
 
-  /// Durée en secondes (ou valeur par défaut)
-  int get durationInSeconds => tempsLimiteSec ?? 30;
-
-  /// Vérifie si c'est une question à choix multiple
-  bool get isMultipleChoice => typeQuestion == 'choix_multiple';
-
-  /// Vérifie si la réponse donnée est valide
-  bool isValidAnswer(String? answer) {
-    if (answer == null || answer.isEmpty) return false;
-    if (isMultipleChoice) {
-      return options.contains(answer);
-    }
-    return true;
+  String get typeIcon {
+    if (isQcm) return '📝';
+    if (isVraiFaux) return '✅❌';
+    if (isSaisieTexte) return '⌨️';
+    if (isCarteCliquable) return '🗺️';
+    return '❓';
   }
+
+  String get categoryLabel => category ?? 'Général';
 }
