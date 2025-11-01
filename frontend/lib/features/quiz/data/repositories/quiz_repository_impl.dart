@@ -100,14 +100,16 @@ class QuizRepositoryImpl implements QuizRepository {
   Future<Either<Failure, AnswerEntity>> submitAnswer({
     required String sessionId,
     required String questionId,
-    required String answer,
+    String? reponseId,           // ✅ NOUVEAU - ID pour QCM/Vrai-Faux
+    String? valeurSaisie,
     required int timeSpentSeconds,
   }) async {
     try {
       // Créer le model de soumission
       final submission = AnswerSubmission(
         questionId: questionId,
-        valeurSaisie: answer,
+        reponseId: reponseId,          // ✅ Pour QCM/Vrai-Faux
+        valeurSaisie: valeurSaisie,
         tempsReponseSec: timeSpentSeconds,
       );
 
