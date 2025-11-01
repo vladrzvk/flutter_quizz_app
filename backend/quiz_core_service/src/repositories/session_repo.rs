@@ -106,4 +106,17 @@ impl SessionRepository {
             .await?;
         Ok(score_max_i64 as i32)
     }
+
+    /// ✅ AJOUTER : Récupérer toutes les réponses d'une session (ordre chronologique)
+    pub async fn find_reponses_by_session(
+        pool: &PgPool,
+        session_id: Uuid,
+    ) -> Result<Vec<ReponseUtilisateur>, sqlx::Error> {
+        sqlx::query_as::<_, ReponseUtilisateur>(
+            "SELECT * FROM reponses_utilisateur WHERE session_id = $1 ORDER BY created_at ASC"
+        )
+            .bind(session_id)
+            .fetch_all(pool)
+            .await
+    }
 }

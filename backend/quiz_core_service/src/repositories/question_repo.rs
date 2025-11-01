@@ -1,7 +1,7 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::models::Question;
+use crate::models::{Question, Reponse};
 
 pub struct QuestionRepository;
 
@@ -134,5 +134,29 @@ impl QuestionRepository {
             .execute(pool)
             .await?;
         Ok(())
+    }
+
+    /// ✅ NOUVEAU : Récupérer questions avec leurs réponses
+    pub async fn find_by_quiz_id_with_reponses(
+        pool: &PgPool,
+        quiz_id: Uuid,
+    ) -> Result<Vec<(Question, Vec<Reponse>)>, sqlx::Error> {
+        // 1. Récupérer toutes les questions
+        let questions = Self::find_by_quiz_id(pool, quiz_id).await?;
+
+        // 2. Pour chaque question, récupérer ses réponses
+        let mut result = Vec::new();
+        for question in questions {
+            let reponses = sqlx::query_as::<_, Reponse>(
+                "SELECT * FROM reponses WHERE question_id = $1 ORDER BY ordre ASC"
+            )
+                .bind(question.id)
+                .fetch_all(pool)
+                .await?;
+
+            result.push((question, reponses));
+        }
+
+        Ok(result)
     }
 }

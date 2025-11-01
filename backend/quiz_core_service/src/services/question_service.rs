@@ -7,12 +7,54 @@ use crate::{
     models::Question,
     repositories::question_repo::QuestionRepository,
 };
+use crate::dto::{QuestionWithReponses, ReponseDto};
 
 pub struct QuestionService;
 
 impl QuestionService {
-    pub async fn get_by_quiz_id(pool: &PgPool, quiz_id: Uuid) -> Result<Vec<Question>, AppError> {
-        Ok(QuestionRepository::find_by_quiz_id(pool, quiz_id).await?)
+    pub async fn get_by_quiz_id(
+        pool: &PgPool,
+        quiz_id: Uuid,
+    ) -> Result<Vec<QuestionWithReponses>, AppError> {
+        let questions_with_reponses = QuestionRepository::find_by_quiz_id_with_reponses(pool, quiz_id).await?;
+
+        // Convertir en DTO
+        let result = questions_with_reponses
+            .into_iter()
+            .map(|(question, reponses)| {
+                QuestionWithReponses {
+                    id: question.id,
+                    quiz_id: question.quiz_id,
+                    ordre: question.ordre,
+                    category: question.category,
+                    subcategory: question.subcategory,
+                    type_question: question.type_question.clone(),
+                    question_data: question.question_data.clone(),
+                    media_url: question.media_url.clone(),
+                    target_id: question.target_id,
+                    points: question.points,
+                    temps_limite_sec: question.temps_limite_sec,
+                    hint: question.hint.clone(),
+                    explanation: question.explanation.clone(),
+                    metadata: question.metadata.clone(),
+                    total_attempts: question.total_attempts,
+                    correct_attempts: question.correct_attempts,
+                    created_at: question.created_at,
+                    updated_at: question.updated_at,
+                    reponses: reponses
+                        .into_iter()
+                        .map(|r| ReponseDto {
+                            id: r.id,
+                            valeur: r.valeur,
+                            is_correct: None,  // ❌ NE PAS exposer is_correct au client !
+                            ordre: r.ordre,
+                        })
+                        .collect(),
+                }
+            })
+            .collect();
+
+        Ok(result)
     }
 
     pub async fn get_by_id(pool: &PgPool, id: Uuid) -> Result<Question, AppError> {

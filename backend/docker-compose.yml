@@ -7,28 +7,23 @@ services:
       POSTGRES_DB: map_db
       POSTGRES_USER: map_user
       POSTGRES_PASSWORD: dev_password
+      LANG: C.UTF-8
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C.UTF-8"
+      PGCLIENTENCODING: UTF8
     ports:
       - "5434:5432"
     volumes:
       - postgres-map-data:/var/lib/postgresql/data
 
-  postgres-geo:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_DB: geo_db
-      POSTGRES_USER: geo_user
-      POSTGRES_PASSWORD: dev_password
-    ports:
-      - "5433:5432"
-    volumes:
-      - postgres-geo-data:/var/lib/postgresql/data
-
   postgres-quiz:
-    image: postgres:15-alpine
+    image: postgres:15
     environment:
       POSTGRES_DB: quiz_db
       POSTGRES_USER: quiz_user
       POSTGRES_PASSWORD: dev_password
+      LANG: C.UTF-8
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C.UTF-8"
+      PGCLIENTENCODING: "UTF8"
     ports:
       - "5432:5432"
     volumes:
@@ -43,6 +38,5 @@ services:
 
 volumes:
   postgres-map-data:
-  postgres-geo-data:
   postgres-quiz-data:
   redis-data:

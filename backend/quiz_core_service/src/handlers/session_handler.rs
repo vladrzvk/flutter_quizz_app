@@ -3,7 +3,6 @@ use axum::{
     response::Json,
 };
 use shared::AppError;
-// use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::{
@@ -13,6 +12,7 @@ use crate::{
     AppState
 };
 
+// ✅ INCHANGÉ
 pub async fn start_session_handler(
     State(app_state): State<AppState>,
     Path(quiz_id): Path<Uuid>,
@@ -22,6 +22,7 @@ pub async fn start_session_handler(
     Ok(Json(session))
 }
 
+// ✅ INCHANGÉ
 pub async fn get_session_handler(
     State(app_state): State<AppState>,
     Path(session_id): Path<Uuid>,
@@ -30,15 +31,22 @@ pub async fn get_session_handler(
     Ok(Json(session))
 }
 
+// ✅ MODIFIÉ : Passer plugin_registry
 pub async fn submit_answer_handler(
     State(app_state): State<AppState>,
     Path(session_id): Path<Uuid>,
     Json(payload): Json<SubmitAnswerRequest>,
 ) -> Result<Json<ReponseUtilisateur>, AppError> {
-    let reponse = SessionService::submit_answer(&app_state.pool, session_id, payload).await?;
+    let reponse = SessionService::submit_answer(
+        &app_state.pool,
+        &app_state.plugin_registry,  // ✅ AJOUTÉ
+        session_id,
+        payload
+    ).await?;
     Ok(Json(reponse))
 }
 
+// ✅ INCHANGÉ
 pub async fn finalize_session_handler(
     State(app_state): State<AppState>,
     Path(session_id): Path<Uuid>,

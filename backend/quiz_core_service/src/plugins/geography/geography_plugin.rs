@@ -22,7 +22,7 @@ impl QuizPlugin for GeographyPlugin {
     }
 
     fn description(&self) -> &str {
-        "Quiz sur la géographie mondiale : pays, capitales, régions, drapeaux"
+        "Quiz sur la géographie : fleuves, reliefs, pays, régions, capitales"
     }
 
     /// Validation des réponses géographiques
@@ -32,10 +32,12 @@ impl QuizPlugin for GeographyPlugin {
         question: &Question,
         answer: &SubmitAnswerRequest,
     ) -> Result<ValidationResult, AppError> {
+        // La validation ne dépend PAS de la catégorie
+        // On utilise juste le type de question
         match question.type_question.as_str() {
             "qcm" => self.validate_qcm(pool, question, answer).await,
             "vrai_faux" => self.validate_vrai_faux(pool, question, answer).await,
-            "saisie_texte" => self.validate_saisie_texte(pool, question, answer).await,
+            "saisie_texte" => self.validate_saisie_texte_geo(pool, question, answer).await,
 
             // V1 : Carte cliquable (pas encore implémenté)
             "carte_cliquable" => {
@@ -46,7 +48,7 @@ impl QuizPlugin for GeographyPlugin {
 
             _ => {
                 Err(AppError::BadRequest(
-                    format!("Type de question '{}' non supporté", question.type_question)
+                    format!("Type de question '{}' non supporté pour la géographie", question.type_question)
                 ))
             }
         }
@@ -109,28 +111,28 @@ impl QuizPlugin for GeographyPlugin {
         })
     }
 
-    /// Seed des données géographiques (appelé lors du setup)
-    async fn seed_data(&self, pool: &PgPool) -> Result<(), AppError> {
-        tracing::info!("🌍 Seeding geography data...");
-
-        // On créera le script SQL de seed à l'étape suivante
-        // Pour l'instant, juste un placeholder
-
-        tracing::info!("✅ Geography data seeded successfully");
+    /// Seed des données géographiques (on le fera plus tard)
+    async fn seed_data(&self, _pool: &PgPool) -> Result<(), AppError> {
+        tracing::info!("🌍 Geography plugin: seed data will be done via SQL script");
         Ok(())
     }
 }
 
-// Implémentations privées des méthodes de validation
+// Méthodes privées spécifiques à la géographie
 impl GeographyPlugin {
-    /// Validation saisie texte avec variations acceptées
+    /// Validation saisie texte avec variations acceptées et normalisation
     /// Ex: "Paris", "paris", "PARIS" sont toutes acceptées
-    async fn validate_saisie_texte_internal(
+    async fn validate_saisie_texte_geo(
         &self,
         pool: &PgPool,
         question: &Question,
-        valeur_saisie: &str,
+        answer: &SubmitAnswerRequest,
     ) -> Result<ValidationResult, AppError> {
+        let valeur_saisie = answer
+            .valeur_saisie
+            .as_ref()
+            .ok_or_else(|| AppError::BadRequest("valeur_saisie requise".to_string()))?;
+
         // Normaliser la saisie : lowercase + trim
         let normalized = valeur_saisie.trim().to_lowercase();
 

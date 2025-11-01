@@ -8,7 +8,7 @@ edition = "2024"
 tokio = { workspace = true }
 axum = { workspace = true }
 tower = { workspace = true }
-tower-http = { workspace = true }
+tower-http = { workspace = true, version = "1.0.0", features = ["set-header"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sqlx = { workspace = true }
