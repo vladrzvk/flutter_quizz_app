@@ -50,6 +50,7 @@ impl SessionService {
         session_id: Uuid,
         request: SubmitAnswerRequest,
     ) -> Result<ReponseUtilisateur, AppError> {
+        
         // Vérifier que la session existe et est en cours
         let session = SessionRepository::find_active_by_id(pool, session_id)
             .await?

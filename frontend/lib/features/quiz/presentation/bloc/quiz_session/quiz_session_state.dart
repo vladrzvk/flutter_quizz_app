@@ -39,6 +39,12 @@ class QuizSessionInProgress extends QuizSessionState {
   bool get isLastQuestion => currentQuestionIndex >= questions.length - 1;
   int get totalQuestions => questions.length;
   int get answeredQuestions => submittedAnswers.length;
+  int get totalScore {
+    return submittedAnswers.fold<int>(
+      0,
+          (sum, answer) => sum + answer.pointsObtenus,
+    );
+  }
 
   @override
   List<Object> get props => [
@@ -78,6 +84,13 @@ class QuizAnswerSubmitted extends QuizSessionState {
     required this.submittedAnswers,
     required this.lastAnswer,
   });
+
+  int get totalScore {
+    return submittedAnswers.fold<int>(
+      0,
+          (sum, answer) => sum + answer.pointsObtenus,
+    );
+  }
 
   @override
   List<Object> get props => [

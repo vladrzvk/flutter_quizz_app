@@ -150,10 +150,24 @@ pub trait QuizPlugin: Send + Sync {
         question: &Question,
         answer: &SubmitAnswerRequest,
     ) -> Result<ValidationResult, AppError> {
-        // Validation par défaut : vérifier dans la table reponses
-        let reponse_id = answer
-            .reponse_id
-            .ok_or_else(|| AppError::BadRequest("reponse_id requis pour QCM".to_string()))?;
+
+        // ✅ AJOUTER : Gérer le timeout (pas de réponse)
+        let reponse_id = match &answer.reponse_id {
+            Some(id) => id,
+            None => {
+                // Timeout : aucune réponse sélectionnée
+                return Ok(ValidationResult {
+                    is_correct: false,
+                    feedback_message: "Temps écoulé - Aucune réponse".to_string(),
+                    explanation: None,
+                    partial_score: None,
+                });
+            }
+        };
+
+        // let reponse_id = answer
+        //     .reponse_id
+        //     .ok_or_else(|| AppError::BadRequest("reponse_id requis pour QCM".to_string()))?;
 
         let is_correct: bool = sqlx::query_scalar(
             "SELECT is_correct FROM reponses WHERE id = $1 AND question_id = $2",
@@ -180,8 +194,35 @@ pub trait QuizPlugin: Send + Sync {
         question: &Question,
         answer: &SubmitAnswerRequest,
     ) -> Result<ValidationResult, AppError> {
-        // Réutiliser la validation QCM (même logique)
-        self.validate_qcm(pool, question, answer).await
+        let reponse_id = match &answer.reponse_id {
+            Some(id) => id,
+            None => {
+                // Timeout : aucune réponse sélectionnée
+                return Ok(ValidationResult {
+                    is_correct: false,
+                    feedback_message: "Temps écoulé - Aucune réponse".to_string(),
+                    explanation: None,
+                    partial_score: None,
+                });
+            }
+        };
+        // Reste identique
+        let is_correct:bool = sqlx::query_scalar(
+            "SELECT is_correct FROM reponses WHERE id = $1 AND question_id = $2",
+        )
+            .bind(reponse_id)
+            .bind(&question.id)
+            .fetch_optional(pool)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Réponse non trouvée".to_string()))?;
+
+        if is_correct {
+            Ok(ValidationResult::correct("Bonne réponse !")
+                .with_explanation(question.explanation.clone().unwrap_or_default()))
+        } else {
+            Ok(ValidationResult::incorrect("Mauvaise réponse")
+                .with_explanation(question.explanation.clone().unwrap_or_default()))
+        }
     }
 
     /// Validation spécifique pour le type "saisie_texte"

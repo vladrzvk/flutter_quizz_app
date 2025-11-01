@@ -30,11 +30,15 @@ class _QuizSessionPageState extends State<QuizSessionPage> {
   Timer? _timer;
   int _remainingSeconds = 0;
 
+  QuizSessionBloc? _bloc;
+  int _lastQuestionIndex = -1;
+  bool _isSubmitting = false;
+
   @override
   void initState() {
     super.initState();
-    _stopwatch.start();
-    _startTimer();
+    // _stopwatch.start();
+    // _startTimer();
   }
 
   @override
@@ -44,54 +48,84 @@ class _QuizSessionPageState extends State<QuizSessionPage> {
     super.dispose();
   }
 
-  /// ✅ Timer pour mettre à jour l'UI chaque seconde
+  /// Timer pour mettre à jour l'UI chaque seconde
   void _startTimer() {
+    //  Annuler le timer précédent
+    _timer?.cancel();
+
+    // On force juste un rebuild toutes les secondes pour l'affichage
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
-        setState(() {
-          // L'UI se rafraîchit automatiquement
-        });
+        setState(() {});  // Juste pour rafraîchir l'UI
       }
     });
+
   }
 
-  /// ✅ Démarrer le countdown pour une question avec temps limite
+  ///  Démarrer le countdown pour une question avec temps limite
   void _startQuestionCountdown(int seconds) {
+    // ✅ Annuler tous les timers existants
+    _timer?.cancel();
+
     setState(() {
       _remainingSeconds = seconds;
     });
 
-    _timer?.cancel();
+    print('⏱️ Countdown START: ${seconds}s');
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_remainingSeconds > 0) {
-        setState(() {
-          _remainingSeconds--;
-        });
-      } else {
-        // ✅ Temps écoulé : soumettre automatiquement
+      // ✅ VÉRIFIER D'ABORD si _isSubmitting
+      if (_isSubmitting) {
+        print('⚠️ Déjà en train de soumettre, on annule le timer');
         timer.cancel();
+        return;
+      }
+
+      if (_remainingSeconds > 0) {
         if (mounted) {
-          // ✅ Récupérer le state actuel depuis le BLoC
-          final currentState = context.read<QuizSessionBloc>().state;
+          setState(() {
+            _remainingSeconds--;
+          });
+
+          // Log uniquement les 5 dernières secondes
+          if (_remainingSeconds <= 5 && _remainingSeconds > 0) {
+            print('⏱️ Countdown: ${_remainingSeconds}s restantes');
+          }
+        }
+      } else {
+        // ✅ ARRÊTER LE TIMER IMMÉDIATEMENT
+        timer.cancel();
+        print('⏰ COUNTDOWN FINISHED');
+
+        // ✅ Double vérification
+        if (mounted && _bloc != null && !_isSubmitting) {
+          _isSubmitting = true;
+
+          final currentState = _bloc!.state;
+
           if (currentState is QuizSessionInProgress) {
             final timeSpent = _stopwatch.elapsed.inSeconds;
 
-            // Soumettre avec une réponse vide (timeout)
-            context.read<QuizSessionBloc>().add(
+            print('⏰ TIMEOUT - Auto-submit after ${timeSpent}s');
+
+            // ✅ Soumettre
+            _bloc!.add(
               SubmitAnswerEvent(
                 questionId: currentState.currentQuestion.id,
-                answer: '', // ✅ Réponse vide = timeout
+                answer: '',
                 timeSpentSeconds: timeSpent,
               ),
             );
+
+            // ✅ Arrêter le Stopwatch aussi
+            _stopwatch.stop();
           }
         }
       }
     });
   }
 
-  /// ✅ Réinitialiser pour la question suivante
+  ///  Réinitialiser pour la question suivante
   void _resetForNextQuestion(int? timeLimit) {
     setState(() {
       _selectedAnswerId = null;
@@ -109,17 +143,72 @@ class _QuizSessionPageState extends State<QuizSessionPage> {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => sl<QuizSessionBloc>()
-        ..add(StartQuizSessionEvent(
-          quizId: widget.quizId,
-          userId: const Uuid().v4(),
-        )),
+      create: (_) {
+        // ✅ Stocker la référence
+        _bloc = sl<QuizSessionBloc>()
+          ..add(StartQuizSessionEvent(
+            quizId: widget.quizId,
+            userId: const Uuid().v4(),
+          ));
+        return _bloc!;
+      },
       child: BlocConsumer<QuizSessionBloc, QuizSessionState>(
         listener: (context, state) {
+          print('🔔 LISTENER CALLED - State: ${state.runtimeType}');
+          // ✅ Détecter nouvelle question
+          if (state is QuizSessionInProgress) {
+            final currentIndex = state.currentQuestionIndex;
+            print('   → currentIndex: $currentIndex, _lastQuestionIndex: $_lastQuestionIndex'); //
 
+            // ✅ AJOUTER : Ne pas redémarrer si on est en train de soumettre
+            if (_isSubmitting && currentIndex == _lastQuestionIndex) {
+              print('⚠️ Soumission en cours, on ne redémarre pas le timer');
+              return;
+            }
 
-          // Quand la session est terminée
+            // Si nouvelle question détectée
+            if (currentIndex != _lastQuestionIndex) {
+              print('🎯 Nouvelle question ${currentIndex + 1} - Timer: ${state.currentQuestion.tempsLimiteSec}s');
+
+              _lastQuestionIndex = currentIndex;
+              _isSubmitting = false;  // ✅ Reset pour la nouvelle question
+
+              final question = state.currentQuestion;
+
+              // ✅ Réinitialiser pour la nouvelle question
+              setState(() {
+                _selectedAnswerId = null;
+              });
+
+              // ✅ Arrêter et réinitialiser le Stopwatch
+              _stopwatch.stop();
+              _stopwatch.reset();
+              _stopwatch.start();
+
+              // Démarrer le timer approprié
+              _timer?.cancel();
+              if (question.hasTimeLimit) {
+                print('⏱️ Countdown de ${question.tempsLimiteSec}s démarre');
+                _startQuestionCountdown(question.tempsLimiteSec!);
+              } else {
+                _startTimer();
+              }
+            }
+          }
+
+          // ✅ AJOUTER : Quand on passe à QuizAnswerSubmitted
+          if (state is QuizAnswerSubmitted) {
+            print('✅ Réponse soumise - Arrêt des timers');
+            _timer?.cancel();
+            _stopwatch.stop();
+          }
+
+          // Session terminée
           if (state is QuizSessionCompleted) {
+            print('🏁 Quiz terminé');
+            _stopwatch.stop();
+            _timer?.cancel();
+
             context.pushReplacementNamed(
               'quiz-result',
               queryParameters: {
@@ -129,17 +218,6 @@ class _QuizSessionPageState extends State<QuizSessionPage> {
           }
         },
         builder: (context, state) {
-          // ✅ AJOUTER ICI - Initialiser le timer pour chaque nouvelle question
-          if (state is QuizSessionInProgress) {
-            final question = state.currentQuestion;
-
-            // Vérifier si c'est une nouvelle question (index a changé)
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (question.hasTimeLimit && _remainingSeconds == 0) {
-                _startQuestionCountdown(question.tempsLimiteSec!);
-              }
-            });
-          }
           return Scaffold(
             appBar: AppBar(
               title: Text(widget.quizTitle),
@@ -523,7 +601,7 @@ class _QuizSessionPageState extends State<QuizSessionPage> {
                         _buildStatColumn(
                           context,
                           'Score',
-                          '${state.session.score}',
+                          '${state.totalScore}',
                           Icons.star,
                         ),
                         Container(
@@ -547,11 +625,11 @@ class _QuizSessionPageState extends State<QuizSessionPage> {
                 // Bouton suivant ou terminer
                 ElevatedButton(
                   onPressed: () {
-                    final nextQuestion = !isLastQuestion
-                        ? state.questions[state.currentQuestionIndex + 1]
-                        : null;
-
-                    _resetForNextQuestion(nextQuestion?.tempsLimiteSec);
+                    // final nextQuestion = !isLastQuestion
+                    //     ? state.questions[state.currentQuestionIndex + 1]
+                    //     : null;
+                    //
+                    // _resetForNextQuestion(nextQuestion?.tempsLimiteSec);
 
                     context.read<QuizSessionBloc>().add(const NextQuestionEvent());
                   },
@@ -595,21 +673,25 @@ class _QuizSessionPageState extends State<QuizSessionPage> {
   }
 
   void _submitAnswer(BuildContext context, QuizSessionInProgress? state) {
-    if (state == null) return;
+    if (state == null || _isSubmitting) return;
 
+    _isSubmitting = true;  // ✅ Bloquer les doubles soumissions
     final timeSpent = _stopwatch.elapsed.inSeconds;
+
+    print('✅ Manuel submit after ${timeSpent}s');
 
     context.read<QuizSessionBloc>().add(
       SubmitAnswerEvent(
         questionId: state.currentQuestion.id,
-        answer: _selectedAnswerId ?? '', // ✅ Envoyer l'ID ou le texte
+        answer: _selectedAnswerId ?? '',
         timeSpentSeconds: timeSpent,
       ),
     );
 
-    // Arrêter le timer après soumission
+    // Arrêter le timer
     _timer?.cancel();
   }
+
 
   Future<void> _showQuitDialog(BuildContext context) async {
     final shouldQuit = await showDialog<bool>(

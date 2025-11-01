@@ -81,8 +81,6 @@ class QuizSessionBloc extends Bloc<QuizSessionEvent, QuizSessionState> {
     if (state is! QuizSessionInProgress) return;
 
     final currentState = state as QuizSessionInProgress;
-
-    // ✅ Utiliser currentState au lieu de state
     final currentQuestion = currentState.questions[currentState.currentQuestionIndex];
 
     // ✅ Déterminer si c'est QCM/Vrai-Faux ou Saisie
@@ -90,8 +88,7 @@ class QuizSessionBloc extends Bloc<QuizSessionEvent, QuizSessionState> {
     String? valeurSaisie;
 
     if (currentQuestion.isQcm || currentQuestion.isVraiFaux) {
-      // Pour QCM/Vrai-Faux : envoyer l'ID de la réponse
-      reponseId = event.answer;
+      reponseId = event.answer.isEmpty ? null : event.answer;
       valeurSaisie = null;
     } else if (currentQuestion.isSaisieTexte) {
       // Pour saisie texte : envoyer le texte
