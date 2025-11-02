@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  # Base de données Quiz
+  postgres-quiz:
+    image: postgres:15-alpine
+    container_name: quiz-postgres
+    environment:
+      POSTGRES_DB: quiz_db
+      POSTGRES_USER: quiz_user
+      POSTGRES_PASSWORD: dev_password
+      LANG: C.UTF-8
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C.UTF-8"
+      PGCLIENTENCODING: UTF8
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-quiz-data:/var/lib/postgresql/data
+      - ./backend/quiz_core_service/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quiz_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Base de données Cartes (avec PostGIS)
+  postgres-map:
+    image: postgis/postgis:15-3.3
+    container_name: map-postgres
+    environment:
+      POSTGRES_DB: map_db
+      POSTGRES_USER: map_user
+      POSTGRES_PASSWORD: dev_password
+      LANG: C.UTF-8
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C.UTF-8"
+      PGCLIENTENCODING: UTF8
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres-map-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U map_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis (Cache)
+  redis:
+    image: redis:7-alpine
+    container_name: quiz-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend Quiz (avec hot reload)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../docker/backend-dev.Dockerfile
+    container_name: quiz-backend
+    environment:
+      DATABASE_URL: postgresql://quiz_user:dev_password@postgres-quiz:5432/quiz_db
+      RUST_LOG: debug
+      HOST: 0.0.0.0
+      PORT: 8080
+      JWT_SECRET: dev-secret-key
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend/quiz_core_service:/app
+      - cargo_cache:/usr/local/cargo/registry
+    depends_on:
+      postgres-quiz:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: cargo watch -x run
+
+volumes:
+  postgres-quiz-data:
+  postgres-map-data:
+  redis-data:
+  cargo_cache:

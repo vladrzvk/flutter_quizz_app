@@ -1,0 +1,173 @@
+workflows:
+  ios-production:
+    name: iOS Production Build
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+
+    environment:
+      groups:
+        - app_store_credentials
+      vars:
+        XCODE_WORKSPACE: "Runner.xcworkspace"
+        XCODE_SCHEME: "Runner"
+        BUNDLE_ID: "com.example.quizGeoApp"
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+
+    triggering:
+      events:
+        - push
+        - tag
+      branch_patterns:
+        - pattern: 'main'
+          include: true
+          source: true
+      tag_patterns:
+        - pattern: 'v*'
+          include: true
+      cancel_previous_builds: true
+
+    scripts:
+      - name: Set up code signing
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files \
+            $BUNDLE_ID \
+            --type IOS_APP_STORE \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
+
+      - name: Get Flutter packages
+        script: |
+          cd frontend
+          flutter packages pub get
+
+      - name: Flutter analyze
+        script: |
+          cd frontend
+          flutter analyze
+
+      - name: Run tests
+        script: |
+          cd frontend
+          flutter test
+        ignore_failure: false
+
+      - name: Increment build number
+        script: |
+          cd frontend
+          BUILD_NUMBER=$(($(git rev-list --count HEAD) + 1))
+          flutter build ios \
+            --release \
+            --build-number=$BUILD_NUMBER \
+            --export-options-plist=/Users/builder/export_options.plist
+
+    artifacts:
+      - frontend/build/ios/ipa/*.ipa
+      - frontend/build/ios/archive/Runner.xcarchive
+
+    publishing:
+      email:
+        recipients:
+          - your-email@example.com
+        notify:
+          success: true
+          failure: true
+
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        beta_groups:
+          - Internal Testers
+        submit_to_app_store: false
+
+      slack:
+        channel: '#releases'
+        notify_on_build_start: true
+        notify:
+          success: true
+          failure: true
+
+  android-production:
+    name: Android Production Build
+    max_build_duration: 60
+    instance_type: linux_x2
+
+    environment:
+      groups:
+        - google_play_credentials
+      vars:
+        PACKAGE_NAME: "com.example.quiz_geo_app"
+      flutter: stable
+      java: 17
+
+    triggering:
+      events:
+        - push
+        - tag
+      branch_patterns:
+        - pattern: 'main'
+          include: true
+          source: true
+      tag_patterns:
+        - pattern: 'v*'
+          include: true
+      cancel_previous_builds: true
+
+    scripts:
+      - name: Set up local properties
+        script: |
+          echo "flutter.sdk=$HOME/programs/flutter" > "$CM_BUILD_DIR/frontend/android/local.properties"
+
+      - name: Get Flutter packages
+        script: |
+          cd frontend
+          flutter packages pub get
+
+      - name: Flutter analyze
+        script: |
+          cd frontend
+          flutter analyze
+
+      - name: Run tests
+        script: |
+          cd frontend
+          flutter test
+        ignore_failure: false
+
+      - name: Build APK
+        script: |
+          cd frontend
+          BUILD_NUMBER=$(($(git rev-list --count HEAD) + 1))
+          flutter build apk --release --build-number=$BUILD_NUMBER
+
+      - name: Build App Bundle
+        script: |
+          cd frontend
+          flutter build appbundle --release --build-number=$BUILD_NUMBER
+
+    artifacts:
+      - frontend/build/app/outputs/**/*.apk
+      - frontend/build/app/outputs/**/*.aab
+
+    publishing:
+      email:
+        recipients:
+          - your-email@example.com
+        notify:
+          success: true
+          failure: true
+
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
+        submit_as_draft: true
+
+      slack:
+        channel: '#releases'
+        notify_on_build_start: true
+        notify:
+          success: true
+          failure: true
