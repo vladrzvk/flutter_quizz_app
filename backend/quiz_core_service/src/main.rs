@@ -70,14 +70,25 @@ async fn main() -> anyhow::Result<()> {
         header::HeaderValue::from_static("application/json; charset=utf-8"),
     ));
 
-    // Server
-    let addr = SocketAddr::from(([127, 0, 0, 1], config.server_port));
-    tracing::info!("🚀 Quiz Core Service listening on {}", addr);
-    tracing::info!("📍 API: http://localhost:{}/api/v1", config.server_port);
-    tracing::info!("📍 Health: http://localhost:{}/health", config.server_port);
+    // Server : en localhost direct
+    // let addr = SocketAddr::from(([127, 0, 0, 1], config.server_port));
 
-    let listener = tokio::net::TcpListener::bind(addr).await?;
+    // Récupérer HOST depuis l'env, défaut à 0.0.0.0
+
+    let addr = format!("{}:{}", config.server_host, config.server_port);
+
+
+
+    tracing::info!("🚀 Quiz Core Service listening on {}", addr);
+    tracing::info!("📍 API: http://{}:{}/api/v1", config.server_host, config.server_port);
+    tracing::info!("📍 Health: http://{}:{}/health",config.server_host, config.server_port);
+
+    // let listener = tokio::net::TcpListener::bind(addr).await?;
+    let listener = tokio::net::TcpListener::bind(&addr)
+        .await
+        .expect("Failed to bind");
     axum::serve(listener, app).await?;
+
 
     Ok(())
 }

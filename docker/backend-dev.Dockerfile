@@ -1,6 +1,6 @@
-# Dockerfile pour le développement local
-FROM rust:1.75-slim
+FROM rust:1.90-slim
 
+# Installer les dépendances système
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
@@ -10,9 +10,13 @@ RUN apt-get update && apt-get install -y \
 # Installer cargo-watch pour hot reload
 RUN cargo install cargo-watch
 
+# Installer SQLx CLI
+RUN cargo install sqlx-cli --no-default-features --features postgres
+
 WORKDIR /app
 
-# Le code sera monté via volume
 EXPOSE 8080
 
-CMD ["cargo", "watch", "-x", "run"]
+# Le code sera monté via volume
+# Lancer cargo watch depuis quiz_core_service
+CMD ["bash", "-c", "cd quiz_core_service && cargo watch -x run"]
