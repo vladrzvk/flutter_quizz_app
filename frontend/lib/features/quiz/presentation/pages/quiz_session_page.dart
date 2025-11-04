@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -25,32 +26,189 @@ class QuizSessionPage extends StatefulWidget {
 
 class _QuizSessionPageState extends State<QuizSessionPage> {
   final Stopwatch _stopwatch = Stopwatch();
-  String? _selectedAnswer;
+  String? _selectedAnswerId; // ✅ Stocker l'ID, pas le texte !
+  Timer? _timer;
+  int _remainingSeconds = 0;
+
+  QuizSessionBloc? _bloc;
+  int _lastQuestionIndex = -1;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
     super.initState();
-    _stopwatch.start();
+    // _stopwatch.start();
+    // _startTimer();
   }
 
   @override
   void dispose() {
     _stopwatch.stop();
+    _timer?.cancel();
     super.dispose();
+  }
+
+  /// Timer pour mettre à jour l'UI chaque seconde
+  void _startTimer() {
+    //  Annuler le timer précédent
+    _timer?.cancel();
+
+    // On force juste un rebuild toutes les secondes pour l'affichage
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {});  // Juste pour rafraîchir l'UI
+      }
+    });
+
+  }
+
+  ///  Démarrer le countdown pour une question avec temps limite
+  void _startQuestionCountdown(int seconds) {
+    // ✅ Annuler tous les timers existants
+    _timer?.cancel();
+
+    setState(() {
+      _remainingSeconds = seconds;
+    });
+
+    print('⏱️ Countdown START: ${seconds}s');
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      // ✅ VÉRIFIER D'ABORD si _isSubmitting
+      if (_isSubmitting) {
+        print('⚠️ Déjà en train de soumettre, on annule le timer');
+        timer.cancel();
+        return;
+      }
+
+      if (_remainingSeconds > 0) {
+        if (mounted) {
+          setState(() {
+            _remainingSeconds--;
+          });
+
+          // Log uniquement les 5 dernières secondes
+          if (_remainingSeconds <= 5 && _remainingSeconds > 0) {
+            print('⏱️ Countdown: ${_remainingSeconds}s restantes');
+          }
+        }
+      } else {
+        // ✅ ARRÊTER LE TIMER IMMÉDIATEMENT
+        timer.cancel();
+        print('⏰ COUNTDOWN FINISHED');
+
+        // ✅ Double vérification
+        if (mounted && _bloc != null && !_isSubmitting) {
+          _isSubmitting = true;
+
+          final currentState = _bloc!.state;
+
+          if (currentState is QuizSessionInProgress) {
+            final timeSpent = _stopwatch.elapsed.inSeconds;
+
+            print('⏰ TIMEOUT - Auto-submit after ${timeSpent}s');
+
+            // ✅ Soumettre
+            _bloc!.add(
+              SubmitAnswerEvent(
+                questionId: currentState.currentQuestion.id,
+                answer: '',
+                timeSpentSeconds: timeSpent,
+              ),
+            );
+
+            // ✅ Arrêter le Stopwatch aussi
+            _stopwatch.stop();
+          }
+        }
+      }
+    });
+  }
+
+  ///  Réinitialiser pour la question suivante
+  void _resetForNextQuestion(int? timeLimit) {
+    setState(() {
+      _selectedAnswerId = null;
+      _stopwatch.reset();
+      _stopwatch.start();
+    });
+
+    if (timeLimit != null) {
+      _startQuestionCountdown(timeLimit);
+    } else {
+      _startTimer();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => sl<QuizSessionBloc>()
-        ..add(StartQuizSessionEvent(
-          quizId: widget.quizId,
-          userId: const Uuid().v4(), // Générer un user ID temporaire
-        )),
+      create: (_) {
+        // ✅ Stocker la référence
+        _bloc = sl<QuizSessionBloc>()
+          ..add(StartQuizSessionEvent(
+            quizId: widget.quizId,
+            userId: const Uuid().v4(),
+          ));
+        return _bloc!;
+      },
       child: BlocConsumer<QuizSessionBloc, QuizSessionState>(
         listener: (context, state) {
-          // Quand la session est terminée, naviguer vers les résultats
+          print('🔔 LISTENER CALLED - State: ${state.runtimeType}');
+          // ✅ Détecter nouvelle question
+          if (state is QuizSessionInProgress) {
+            final currentIndex = state.currentQuestionIndex;
+            print('   → currentIndex: $currentIndex, _lastQuestionIndex: $_lastQuestionIndex'); //
+
+            // ✅ AJOUTER : Ne pas redémarrer si on est en train de soumettre
+            if (_isSubmitting && currentIndex == _lastQuestionIndex) {
+              print('⚠️ Soumission en cours, on ne redémarre pas le timer');
+              return;
+            }
+
+            // Si nouvelle question détectée
+            if (currentIndex != _lastQuestionIndex) {
+              print('🎯 Nouvelle question ${currentIndex + 1} - Timer: ${state.currentQuestion.tempsLimiteSec}s');
+
+              _lastQuestionIndex = currentIndex;
+              _isSubmitting = false;  // ✅ Reset pour la nouvelle question
+
+              final question = state.currentQuestion;
+
+              // ✅ Réinitialiser pour la nouvelle question
+              setState(() {
+                _selectedAnswerId = null;
+              });
+
+              // ✅ Arrêter et réinitialiser le Stopwatch
+              _stopwatch.stop();
+              _stopwatch.reset();
+              _stopwatch.start();
+
+              // Démarrer le timer approprié
+              _timer?.cancel();
+              if (question.hasTimeLimit) {
+                print('⏱️ Countdown de ${question.tempsLimiteSec}s démarre');
+                _startQuestionCountdown(question.tempsLimiteSec!);
+              } else {
+                _startTimer();
+              }
+            }
+          }
+
+          // ✅ AJOUTER : Quand on passe à QuizAnswerSubmitted
+          if (state is QuizAnswerSubmitted) {
+            print('✅ Réponse soumise - Arrêt des timers');
+            _timer?.cancel();
+            _stopwatch.stop();
+          }
+
+          // Session terminée
           if (state is QuizSessionCompleted) {
+            print('🏁 Quiz terminé');
+            _stopwatch.stop();
+            _timer?.cancel();
+
             context.pushReplacementNamed(
               'quiz-result',
               queryParameters: {
@@ -133,6 +291,7 @@ class _QuizSessionPageState extends State<QuizSessionPage> {
       QuizSessionInProgress state,
       ) {
     final question = state.currentQuestion;
+    final hasTimeLimit = question.hasTimeLimit;
 
     return Column(
       children: [
@@ -150,12 +309,24 @@ class _QuizSessionPageState extends State<QuizSessionPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Info progress
-                Text(
-                  'Question ${state.currentQuestionIndex + 1} / ${state.totalQuestions}',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Colors.grey[600],
-                  ),
+                // Header avec progress et timer
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Progress
+                    Text(
+                      'Question ${state.currentQuestionIndex + 1} / ${state.totalQuestions}',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Colors.grey[600],
+                      ),
+                    ),
+
+                    // ✅ Timer
+                    if (hasTimeLimit)
+                      _buildCountdownTimer()
+                    else
+                      _buildElapsedTimer(),
+                  ],
                 ),
                 const SizedBox(height: 16),
 
@@ -163,30 +334,79 @@ class _QuizSessionPageState extends State<QuizSessionPage> {
                 QuestionCard(question: question),
                 const SizedBox(height: 24),
 
-                // Options de réponse
-                ...question.options.map((option) {
-                  return AnswerButton(
-                    text: option,
-                    isSelected: _selectedAnswer == option,
-                    onTap: () {
+                // ✅ Options de réponse (QCM/Vrai-Faux)
+                if (question.isQcm || question.isVraiFaux)
+                  ...?question.reponses?.map((option) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: AnswerButton(
+                        text: option.valeur ?? '',
+                        isSelected: _selectedAnswerId == option.id, // ✅ Comparer les IDs
+                        onTap: () {
+                          setState(() {
+                            _selectedAnswerId = option.id; // ✅ Stocker l'ID !
+                          });
+                        },
+                      ),
+                    );
+                  }),
+
+                // ✅ Champ de saisie texte
+                if (question.isSaisieTexte) ...[
+                  TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Votre réponse...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey[100],
+                    ),
+                    onChanged: (value) {
                       setState(() {
-                        _selectedAnswer = option;
+                        _selectedAnswerId = value; // Pour saisie texte, on stocke le texte
                       });
                     },
-                  );
-                }),
+                  ),
+                ],
 
                 const SizedBox(height: 24),
 
+                // Hint (si disponible)
+                if (question.hasHint) ...[
+                  ExpansionTile(
+                    leading: const Icon(Icons.lightbulb_outline, color: Colors.orange),
+                    title: const Text('💡 Besoin d\'un indice ?'),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          question.hint!,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[700],
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
                 // Bouton valider
                 ElevatedButton(
-                  onPressed: _selectedAnswer == null
+                  onPressed: _selectedAnswerId == null || _selectedAnswerId!.isEmpty
                       ? null
                       : () => _submitAnswer(context, state),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
+                    disabledBackgroundColor: Colors.grey[300],
                   ),
-                  child: const Text('Valider'),
+                  child: const Text(
+                    'Valider',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
                 ),
               ],
             ),
@@ -196,11 +416,74 @@ class _QuizSessionPageState extends State<QuizSessionPage> {
     );
   }
 
+  /// ✅ Timer countdown (pour questions avec temps limite)
+  Widget _buildCountdownTimer() {
+    final isUrgent = _remainingSeconds <= 5;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: isUrgent ? Colors.red[100] : Colors.blue[100],
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.timer,
+            size: 18,
+            color: isUrgent ? Colors.red[700] : Colors.blue[700],
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '${_remainingSeconds}s',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: isUrgent ? Colors.red[700] : Colors.blue[700],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// ✅ Timer elapsed (pour questions sans temps limite)
+  Widget _buildElapsedTimer() {
+    final elapsed = _stopwatch.elapsed;
+    final minutes = elapsed.inMinutes;
+    final seconds = elapsed.inSeconds % 60;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.timer, size: 18, color: Colors.grey[700]),
+          const SizedBox(width: 6),
+          Text(
+            '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[700],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAnswerFeedbackView(
       BuildContext context,
       QuizAnswerSubmitted state,
       ) {
     final answer = state.lastAnswer;
+    final question = state.questions[state.currentQuestionIndex];
     final isLastQuestion = state.currentQuestionIndex >= state.questions.length - 1;
 
     return Column(
@@ -220,6 +503,7 @@ class _QuizSessionPageState extends State<QuizSessionPage> {
               children: [
                 // Feedback card
                 Card(
+                  elevation: 4,
                   color: answer.isCorrect ? Colors.green[50] : Colors.red[50],
                   child: Padding(
                     padding: const EdgeInsets.all(24),
@@ -227,12 +511,12 @@ class _QuizSessionPageState extends State<QuizSessionPage> {
                       children: [
                         Icon(
                           answer.isCorrect ? Icons.check_circle : Icons.cancel,
-                          size: 64,
+                          size: 80,
                           color: answer.isCorrect ? Colors.green : Colors.red,
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          answer.feedbackMessage,
+                          answer.isCorrect ? 'Correct !' : 'Incorrect',
                           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: answer.isCorrect ? Colors.green[900] : Colors.red[900],
@@ -240,16 +524,26 @@ class _QuizSessionPageState extends State<QuizSessionPage> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          '${answer.pointsObtenus} points',
-                          style: Theme.of(context).textTheme.titleLarge,
+                          '+${answer.pointsObtenus} points',
+                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         if (answer.speedBadge != null) ...[
                           const SizedBox(height: 8),
-                          Text(
-                            answer.speedBadge!,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[700],
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.blue[100],
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              answer.speedBadge!,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.blue[700],
+                              ),
                             ),
                           ),
                         ],
@@ -258,7 +552,44 @@ class _QuizSessionPageState extends State<QuizSessionPage> {
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
+
+                // Explication (si disponible)
+                if (question.hasExplanation) ...[
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.info_outline, color: Colors.blue[700]),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Explication',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue[700],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            question.explanation!,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[800],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
 
                 // Score actuel
                 Card(
@@ -267,46 +598,22 @@ class _QuizSessionPageState extends State<QuizSessionPage> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        Column(
-                          children: [
-                            Text(
-                              'Score',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${state.session.score}',
-                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
+                        _buildStatColumn(
+                          context,
+                          'Score',
+                          '${state.totalScore}',
+                          Icons.star,
                         ),
                         Container(
                           width: 1,
                           height: 40,
                           color: Colors.grey[300],
                         ),
-                        Column(
-                          children: [
-                            Text(
-                              'Questions',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${state.submittedAnswers.length} / ${state.questions.length}',
-                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
+                        _buildStatColumn(
+                          context,
+                          'Questions',
+                          '${state.submittedAnswers.length} / ${state.questions.length}',
+                          Icons.quiz,
                         ),
                       ],
                     ),
@@ -318,11 +625,11 @@ class _QuizSessionPageState extends State<QuizSessionPage> {
                 // Bouton suivant ou terminer
                 ElevatedButton(
                   onPressed: () {
-                    setState(() {
-                      _selectedAnswer = null;
-                      _stopwatch.reset();
-                      _stopwatch.start();
-                    });
+                    // final nextQuestion = !isLastQuestion
+                    //     ? state.questions[state.currentQuestionIndex + 1]
+                    //     : null;
+                    //
+                    // _resetForNextQuestion(nextQuestion?.tempsLimiteSec);
 
                     context.read<QuizSessionBloc>().add(const NextQuestionEvent());
                   },
@@ -330,7 +637,8 @@ class _QuizSessionPageState extends State<QuizSessionPage> {
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                   child: Text(
-                    isLastQuestion ? 'Voir les résultats' : 'Question suivante',
+                    isLastQuestion ? '🏆 Voir les résultats' : '➡️ Question suivante',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
               ],
@@ -341,19 +649,49 @@ class _QuizSessionPageState extends State<QuizSessionPage> {
     );
   }
 
-  void _submitAnswer(BuildContext context, QuizSessionInProgress state) {
-    if (_selectedAnswer == null) return;
+  Widget _buildStatColumn(BuildContext context, String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, color: Colors.blue[700]),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[600],
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
 
+  void _submitAnswer(BuildContext context, QuizSessionInProgress? state) {
+    if (state == null || _isSubmitting) return;
+
+    _isSubmitting = true;  // ✅ Bloquer les doubles soumissions
     final timeSpent = _stopwatch.elapsed.inSeconds;
+
+    print('✅ Manuel submit after ${timeSpent}s');
 
     context.read<QuizSessionBloc>().add(
       SubmitAnswerEvent(
         questionId: state.currentQuestion.id,
-        answer: _selectedAnswer!,
+        answer: _selectedAnswerId ?? '',
         timeSpentSeconds: timeSpent,
       ),
     );
+
+    // Arrêter le timer
+    _timer?.cancel();
   }
+
 
   Future<void> _showQuitDialog(BuildContext context) async {
     final shouldQuit = await showDialog<bool>(

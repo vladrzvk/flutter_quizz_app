@@ -11,12 +11,13 @@ class SubmitAnswer implements UseCase<AnswerEntity, SubmitAnswerParams> {
 
   SubmitAnswer(this.repository);
 
-  @override
-  Future<Either<Failure, AnswerEntity>> call(SubmitAnswerParams params) async {
-    return await repository.submitAnswer(
+  @override  // ✅ Ajouter @override
+  Future<Either<Failure, AnswerEntity>> call(SubmitAnswerParams params) {
+    return repository.submitAnswer(
       sessionId: params.sessionId,
       questionId: params.questionId,
-      answer: params.answer,
+      reponseId: params.reponseId,
+      valeurSaisie: params.valeurSaisie,
       timeSpentSeconds: params.timeSpentSeconds,
     );
   }
@@ -26,16 +27,24 @@ class SubmitAnswer implements UseCase<AnswerEntity, SubmitAnswerParams> {
 class SubmitAnswerParams extends Equatable {
   final String sessionId;
   final String questionId;
-  final String answer;
+  final String? reponseId;
+  final String? valeurSaisie;
   final int timeSpentSeconds;
 
   const SubmitAnswerParams({
     required this.sessionId,
     required this.questionId,
-    required this.answer,
+    this.reponseId,
+    this.valeurSaisie,
     required this.timeSpentSeconds,
   });
 
   @override
-  List<Object> get props => [sessionId, questionId, answer, timeSpentSeconds];
+  List<Object?> get props => [  // ✅ Object? pour accepter les nulls
+    sessionId,
+    questionId,
+    reponseId,      // ✅ Sans le ?
+    valeurSaisie,   // ✅ Sans le ,
+    timeSpentSeconds,
+  ];
 }

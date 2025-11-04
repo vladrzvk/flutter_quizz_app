@@ -81,12 +81,27 @@ class QuizSessionBloc extends Bloc<QuizSessionEvent, QuizSessionState> {
     if (state is! QuizSessionInProgress) return;
 
     final currentState = state as QuizSessionInProgress;
+    final currentQuestion = currentState.questions[currentState.currentQuestionIndex];
+
+    // ✅ Déterminer si c'est QCM/Vrai-Faux ou Saisie
+    String? reponseId;
+    String? valeurSaisie;
+
+    if (currentQuestion.isQcm || currentQuestion.isVraiFaux) {
+      reponseId = event.answer.isEmpty ? null : event.answer;
+      valeurSaisie = null;
+    } else if (currentQuestion.isSaisieTexte) {
+      // Pour saisie texte : envoyer le texte
+      reponseId = null;
+      valeurSaisie = event.answer;
+    }
 
     final result = await submitAnswer(
       SubmitAnswerParams(
         sessionId: currentState.session.id,
         questionId: event.questionId,
-        answer: event.answer,
+        reponseId: reponseId,
+        valeurSaisie: valeurSaisie,
         timeSpentSeconds: event.timeSpentSeconds,
       ),
     );
@@ -190,7 +205,6 @@ class QuizSessionBloc extends Bloc<QuizSessionEvent, QuizSessionState> {
           (failure) => emit(QuizSessionError(failure.message)),
           (session) {
         // TODO: Charger aussi les questions et réponses
-        // Pour l'instant, on affiche juste l'erreur
         emit(const QuizSessionError('Fonctionnalité pas encore implémentée'));
       },
     );

@@ -1,0 +1,113 @@
+name: Backend CD
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  deploy:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Configure kubectl
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        run: |
+          mkdir -p ~/.kube
+          echo "$KUBE_CONFIG" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+          kubectl config current-context
+
+      - name: Set environment variables
+        id: vars
+        run: |
+          if [ "${{ github.event.inputs.environment }}" = "production" ]; then
+            echo "namespace=quiz-app-prod" >> $GITHUB_OUTPUT
+            echo "replicas=5" >> $GITHUB_OUTPUT
+          else
+            echo "namespace=quiz-app" >> $GITHUB_OUTPUT
+            echo "replicas=2" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update deployment image
+        run: |
+          kubectl set image deployment/quiz-backend \
+            quiz-backend=ghcr.io/${{ github.repository }}/quiz-backend:${{ github.sha }} \
+            -n ${{ steps.vars.outputs.namespace }}
+
+      - name: Scale deployment
+        run: |
+          kubectl scale deployment/quiz-backend \
+            --replicas=${{ steps.vars.outputs.replicas }} \
+            -n ${{ steps.vars.outputs.namespace }}
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/quiz-backend \
+            -n ${{ steps.vars.outputs.namespace }} \
+            --timeout=5m
+
+      - name: Verify deployment
+        run: |
+          kubectl get pods -n ${{ steps.vars.outputs.namespace }} -l app=quiz-backend
+          echo "---"
+          kubectl get deployment quiz-backend -n ${{ steps.vars.outputs.namespace }}
+
+      - name: Run smoke tests
+        run: |
+          BACKEND_URL=$(kubectl get ingress -n ${{ steps.vars.outputs.namespace }} -o jsonpath='{.items[0].spec.rules[0].host}')
+          echo "Testing $BACKEND_URL"
+          
+          # Health check
+          curl -f https://$BACKEND_URL/health || exit 1
+          
+          # API check
+          curl -f https://$BACKEND_URL/api/v1/quizzes || exit 1
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "Deployment failed, rolling back..."
+          kubectl rollout undo deployment/quiz-backend -n ${{ steps.vars.outputs.namespace }}
+          kubectl rollout status deployment/quiz-backend -n ${{ steps.vars.outputs.namespace }}
+
+      - name: Notify Slack
+        if: always()
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "${{ job.status == 'success' && '✅' || '❌' }} Backend deployment to ${{ steps.vars.outputs.namespace }}: ${{ job.status }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Deployment Status:* ${{ job.status }}\n*Environment:* ${{ steps.vars.outputs.namespace }}\n*Commit:* ${{ github.sha }}\n*Author:* ${{ github.actor }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

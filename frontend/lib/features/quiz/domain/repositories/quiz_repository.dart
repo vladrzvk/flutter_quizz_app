@@ -63,7 +63,8 @@ abstract class QuizRepository {
   Future<Either<Failure, AnswerEntity>> submitAnswer({
     required String sessionId,
     required String questionId,
-    required String answer,
+    String? reponseId,
+    String? valeurSaisie,
     required int timeSpentSeconds,
   });
 

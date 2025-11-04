@@ -75,7 +75,7 @@ class QuestionCard extends StatelessWidget {
                   Icon(Icons.timer, size: 20, color: Colors.blue[700]),
                   const SizedBox(width: 4),
                   Text(
-                    question.durationInSeconds.toString(),
+                    question.tempsLimiteSec.toString(),
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,

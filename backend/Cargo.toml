@@ -1,6 +1,5 @@
 [workspace]
-members = ["quiz_core_service", "shared",
-]
+members = ["quiz_core_service", "shared" ]
 resolver = "2"
 
 [workspace.dependencies]

@@ -25,7 +25,7 @@ pub fn create_router(app_state: AppState) -> Router {
         .route("/api/v1/quizzes/:id", get(get_quiz_by_id_handler))
 
         // Question routes
-        .route("/api/v1/quizzes/:quiz_id/questions", get(get_quiz_questions_handler))
+        .route("/api/v1/quizzes/:quiz_id/questions", get(get_questions_by_quiz_handler))
         .route("/api/v1/questions", post(create_question_handler))
         .route("/api/v1/questions/:id",
                get(get_question_by_id_handler)

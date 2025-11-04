@@ -66,7 +66,7 @@ class QuizCard extends StatelessWidget {
                   _buildBadge(
                     context,
                     icon: Icons.speed,
-                    label: quiz.difficultyLabel,
+                    label: quiz.difficultyEmoji,
                     color: _getDifficultyColor(quiz.niveauDifficulte),
                   ),
 
@@ -82,7 +82,7 @@ class QuizCard extends StatelessWidget {
                   _buildBadge(
                     context,
                     icon: Icons.timer,
-                    label: '~${quiz.tempsLimiteSec} min',
+                    label:  '~${(quiz.nbQuestions * 15) ~/ 60} min',
                     color: Colors.orange,
                   ),
 
