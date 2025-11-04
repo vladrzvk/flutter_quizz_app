@@ -1,21 +1,26 @@
+use crate::{
+    dto::{CreateBulkReponsesRequest, CreateReponseRequest, UpdateReponseRequest},
+    models::Reponse,
+    repositories::{QuestionRepository, ReponseRepository},
+};
+use shared::AppError;
 use sqlx::PgPool;
 use uuid::Uuid;
-use shared::AppError;
-use crate::{
-    dto::{CreateReponseRequest, UpdateReponseRequest, CreateBulkReponsesRequest,},
-    models::Reponse,
-    repositories::{ReponseRepository, QuestionRepository},
-};
 
 pub struct ReponseService;
 
 impl ReponseService {
     /// Récupérer toutes les réponses d'une question
-    pub async fn get_by_question_id(pool: &PgPool, question_id: Uuid) -> Result<Vec<Reponse>, AppError> {
+    pub async fn get_by_question_id(
+        pool: &PgPool,
+        question_id: Uuid,
+    ) -> Result<Vec<Reponse>, AppError> {
         // Vérifier que la question existe
         QuestionRepository::find_by_id(pool, question_id)
             .await?
-            .ok_or_else(|| AppError::NotFound(format!("Question with id {} not found", question_id)))?;
+            .ok_or_else(|| {
+                AppError::NotFound(format!("Question with id {} not found", question_id))
+            })?;
 
         let reponses = ReponseRepository::find_by_question_id(pool, question_id).await?;
         Ok(reponses)
@@ -33,17 +38,26 @@ impl ReponseService {
         // Vérifier que la question existe
         QuestionRepository::find_by_id(pool, request.question_id)
             .await?
-            .ok_or_else(|| AppError::NotFound(format!("Question with id {} not found", request.question_id)))?;
+            .ok_or_else(|| {
+                AppError::NotFound(format!(
+                    "Question with id {} not found",
+                    request.question_id
+                ))
+            })?;
 
         // Validation métier
         if request.ordre < Option::from(0) {
-            return Err(AppError::BadRequest("L'ordre doit être positif".to_string()));
+            return Err(AppError::BadRequest(
+                "L'ordre doit être positif".to_string(),
+            ));
         }
 
         // Vérifier qu'il n'y a pas déjà trop de réponses (max 6 pour un QCM par exemple)
         let count = ReponseRepository::count_by_question(pool, request.question_id).await?;
         if count >= 6 {
-            return Err(AppError::BadRequest("Nombre maximum de réponses atteint (6)".to_string()));
+            return Err(AppError::BadRequest(
+                "Nombre maximum de réponses atteint (6)".to_string(),
+            ));
         }
 
         let reponse = ReponseRepository::create(
@@ -55,7 +69,7 @@ impl ReponseService {
             request.ordre,
             request.tolerance_meters,
         )
-            .await?;
+        .await?;
 
         Ok(reponse)
     }
@@ -73,7 +87,9 @@ impl ReponseService {
 
         // Validation métier
         if request.ordre < Option::from(0) {
-            return Err(AppError::BadRequest("L'ordre doit être positif".to_string()));
+            return Err(AppError::BadRequest(
+                "L'ordre doit être positif".to_string(),
+            ));
         }
 
         let reponse = ReponseRepository::update(
@@ -85,8 +101,8 @@ impl ReponseService {
             request.ordre,
             request.tolerance_meters,
         )
-            .await?
-            .ok_or_else(|| AppError::NotFound(format!("Reponse with id {} not found", id)))?;
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("Reponse with id {} not found", id)))?;
 
         Ok(reponse)
     }
@@ -95,7 +111,10 @@ impl ReponseService {
     pub async fn delete(pool: &PgPool, id: Uuid) -> Result<(), AppError> {
         let rows_affected = ReponseRepository::delete(pool, id).await?;
         if rows_affected == 0 {
-            return Err(AppError::NotFound(format!("Reponse with id {} not found", id)));
+            return Err(AppError::NotFound(format!(
+                "Reponse with id {} not found",
+                id
+            )));
         }
         Ok(())
     }
@@ -118,13 +137,11 @@ impl ReponseService {
                 item.ordre,
                 item.tolerance_meters,
             )
-                .await?;
+            .await?;
 
             reponses.push(reponse);
         }
 
         Ok(reponses)
     }
-
-
 }

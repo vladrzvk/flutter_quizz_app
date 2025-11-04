@@ -6,13 +6,16 @@ use crate::models::{Question, Reponse};
 pub struct QuestionRepository;
 
 impl QuestionRepository {
-    pub async fn find_by_quiz_id(pool: &PgPool, quiz_id: Uuid) -> Result<Vec<Question>, sqlx::Error> {
+    pub async fn find_by_quiz_id(
+        pool: &PgPool,
+        quiz_id: Uuid,
+    ) -> Result<Vec<Question>, sqlx::Error> {
         sqlx::query_as::<_, Question>(
-            "SELECT * FROM questions WHERE quiz_id = $1 ORDER BY ordre ASC"
+            "SELECT * FROM questions WHERE quiz_id = $1 ORDER BY ordre ASC",
         )
-            .bind(quiz_id)
-            .fetch_all(pool)
-            .await
+        .bind(quiz_id)
+        .fetch_all(pool)
+        .await
     }
 
     pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Question>, sqlx::Error> {
@@ -31,8 +34,8 @@ impl QuestionRepository {
         question_data: &serde_json::Value,
         media_url: Option<&str>,
         target_id: Option<Uuid>,
-        category: Option<&str>,          // ✅ NOUVEAU
-        subcategory: Option<&str>,       // ✅ NOUVEAU
+        category: Option<&str>,    // ✅ NOUVEAU
+        subcategory: Option<&str>, // ✅ NOUVEAU
         points: i32,
         temps_limite_sec: Option<i32>,
         hint: Option<&str>,
@@ -47,22 +50,22 @@ impl QuestionRepository {
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             RETURNING *
-            "#
+            "#,
         )
-            .bind(quiz_id)
-            .bind(ordre)
-            .bind(type_question)
-            .bind(question_data)
-            .bind(media_url)
-            .bind(target_id)
-            .bind(category)           // ✅ NOUVEAU
-            .bind(subcategory)        // ✅ NOUVEAU
-            .bind(points)
-            .bind(temps_limite_sec)
-            .bind(hint)
-            .bind(explanation)
-            .fetch_one(pool)
-            .await
+        .bind(quiz_id)
+        .bind(ordre)
+        .bind(type_question)
+        .bind(question_data)
+        .bind(media_url)
+        .bind(target_id)
+        .bind(category) // ✅ NOUVEAU
+        .bind(subcategory) // ✅ NOUVEAU
+        .bind(points)
+        .bind(temps_limite_sec)
+        .bind(hint)
+        .bind(explanation)
+        .fetch_one(pool)
+        .await
     }
 
     /// ✅ Mettre à jour une question
@@ -73,8 +76,8 @@ impl QuestionRepository {
         question_data: &serde_json::Value,
         media_url: Option<&str>,
         target_id: Option<Uuid>,
-        category: Option<&str>,          // ✅ NOUVEAU
-        subcategory: Option<&str>,       // ✅ NOUVEAU
+        category: Option<&str>,    // ✅ NOUVEAU
+        subcategory: Option<&str>, // ✅ NOUVEAU
         points: i32,
         temps_limite_sec: Option<i32>,
         hint: Option<&str>,
@@ -96,21 +99,21 @@ impl QuestionRepository {
                 updated_at = NOW()
             WHERE id = $1
             RETURNING *
-            "#
+            "#,
         )
-            .bind(id)
-            .bind(type_question)
-            .bind(question_data)
-            .bind(media_url)
-            .bind(target_id)
-            .bind(category)           // ✅ NOUVEAU
-            .bind(subcategory)        // ✅ NOUVEAU
-            .bind(points)
-            .bind(temps_limite_sec)
-            .bind(hint)
-            .bind(explanation)
-            .fetch_optional(pool)
-            .await
+        .bind(id)
+        .bind(type_question)
+        .bind(question_data)
+        .bind(media_url)
+        .bind(target_id)
+        .bind(category) // ✅ NOUVEAU
+        .bind(subcategory) // ✅ NOUVEAU
+        .bind(points)
+        .bind(temps_limite_sec)
+        .bind(hint)
+        .bind(explanation)
+        .fetch_optional(pool)
+        .await
     }
 
     /// ✅ Filtrer questions par catégorie (NOUVEAU)
@@ -120,12 +123,12 @@ impl QuestionRepository {
         category: &str,
     ) -> Result<Vec<Question>, sqlx::Error> {
         sqlx::query_as::<_, Question>(
-            "SELECT * FROM questions WHERE quiz_id = $1 AND category = $2 ORDER BY ordre ASC"
+            "SELECT * FROM questions WHERE quiz_id = $1 AND category = $2 ORDER BY ordre ASC",
         )
-            .bind(quiz_id)
-            .bind(category)
-            .fetch_all(pool)
-            .await
+        .bind(quiz_id)
+        .bind(category)
+        .fetch_all(pool)
+        .await
     }
 
     pub async fn delete(pool: &PgPool, id: Uuid) -> Result<(), sqlx::Error> {
@@ -148,11 +151,11 @@ impl QuestionRepository {
         let mut result = Vec::new();
         for question in questions {
             let reponses = sqlx::query_as::<_, Reponse>(
-                "SELECT * FROM reponses WHERE question_id = $1 ORDER BY ordre ASC"
+                "SELECT * FROM reponses WHERE question_id = $1 ORDER BY ordre ASC",
             )
-                .bind(question.id)
-                .fetch_all(pool)
-                .await?;
+            .bind(question.id)
+            .fetch_all(pool)
+            .await?;
 
             result.push((question, reponses));
         }

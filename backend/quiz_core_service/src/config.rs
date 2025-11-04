@@ -5,7 +5,6 @@ pub struct Config {
     pub database_url: String,
     pub server_port: u16,
     pub server_host: String,
-
 }
 
 impl Config {
@@ -13,8 +12,7 @@ impl Config {
         dotenvy::dotenv().ok();
 
         Self {
-            database_url: env::var("DATABASE_URL")
-                .expect("DATABASE_URL must be set in .env file"),
+            database_url: env::var("DATABASE_URL").expect("DATABASE_URL must be set in .env file"),
             server_port: env::var("SERVER_PORT")
                 .unwrap_or_else(|_| "8080".to_string())
                 .parse()

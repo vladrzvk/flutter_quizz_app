@@ -1,13 +1,13 @@
-use sqlx::PgPool;
-use uuid::Uuid;
-use std::sync::Arc;
-use shared::AppError;
 use crate::{
     dto::{StartSessionRequest, SubmitAnswerRequest},
-    models::{SessionQuiz, ReponseUtilisateur},
-    repositories::{SessionRepository, QuizRepository, QuestionRepository, ReponseRepository},
-    plugins::PluginRegistry,  // ✅ AJOUTER
+    models::{ReponseUtilisateur, SessionQuiz},
+    plugins::PluginRegistry, // ✅ AJOUTER
+    repositories::{QuestionRepository, QuizRepository, ReponseRepository, SessionRepository},
 };
+use shared::AppError;
+use sqlx::PgPool;
+use std::sync::Arc;
+use uuid::Uuid;
 
 pub struct SessionService;
 
@@ -46,15 +46,16 @@ impl SessionService {
     // ✅ MODIFIÉ : Ajouter plugin_registry
     pub async fn submit_answer(
         pool: &PgPool,
-        plugin_registry: &PluginRegistry,  // ✅ NOUVEAU PARAMÈTRE
+        plugin_registry: &PluginRegistry, // ✅ NOUVEAU PARAMÈTRE
         session_id: Uuid,
         request: SubmitAnswerRequest,
     ) -> Result<ReponseUtilisateur, AppError> {
-        
         // Vérifier que la session existe et est en cours
         let session = SessionRepository::find_active_by_id(pool, session_id)
             .await?
-            .ok_or_else(|| AppError::BadRequest("Session not found or already completed".to_string()))?;
+            .ok_or_else(|| {
+                AppError::BadRequest("Session not found or already completed".to_string())
+            })?;
 
         // Récupérer la question
         let question = QuestionRepository::find_by_id(pool, request.question_id)
@@ -63,7 +64,9 @@ impl SessionService {
 
         // Vérifier que la question appartient au quiz de la session
         if question.quiz_id != session.quiz_id {
-            return Err(AppError::BadRequest("Question does not belong to this quiz".to_string()));
+            return Err(AppError::BadRequest(
+                "Question does not belong to this quiz".to_string(),
+            ));
         }
 
         // ✅ NOUVEAU : Récupérer le quiz pour le domaine
@@ -72,15 +75,11 @@ impl SessionService {
             .ok_or_else(|| AppError::NotFound("Quiz not found".to_string()))?;
 
         // ✅ NOUVEAU : Utiliser le plugin pour valider
-        let plugin = plugin_registry
-            .get(&quiz.domain)
-            .ok_or_else(|| {
-                AppError::NotFound(format!("No plugin found for domain: {}", quiz.domain))
-            })?;
+        let plugin = plugin_registry.get(&quiz.domain).ok_or_else(|| {
+            AppError::NotFound(format!("No plugin found for domain: {}", quiz.domain))
+        })?;
 
-        let validation = plugin
-            .validate_answer(pool, &question, &request)
-            .await?;
+        let validation = plugin.validate_answer(pool, &question, &request).await?;
 
         tracing::debug!(
             question_id = %request.question_id,
@@ -118,11 +117,11 @@ impl SessionService {
             request.question_id,
             request.reponse_id,
             request.valeur_saisie.as_deref(),
-            validation.is_correct,  // ✅ Utiliser validation du plugin
+            validation.is_correct, // ✅ Utiliser validation du plugin
             points_obtenus,
             request.temps_reponse_sec,
         )
-            .await?;
+        .await?;
 
         // Mettre à jour le score de la session
         SessionRepository::update_score(pool, session_id, points_obtenus).await?;
@@ -131,17 +130,17 @@ impl SessionService {
     }
 
     // ✅ INCHANGÉ
-    pub async fn finalize_session(pool: &PgPool, session_id: Uuid) -> Result<SessionQuiz, AppError> {
+    pub async fn finalize_session(
+        pool: &PgPool,
+        session_id: Uuid,
+    ) -> Result<SessionQuiz, AppError> {
         SessionRepository::finalize(pool, session_id)
             .await?
             .ok_or_else(|| AppError::NotFound("Session not found or already finalized".to_string()))
     }
 
     // ✅ NOUVEAU : Calculer le streak
-    async fn calculate_streak(
-        pool: &PgPool,
-        session_id: Uuid,
-    ) -> Result<i32, AppError> {
+    async fn calculate_streak(pool: &PgPool, session_id: Uuid) -> Result<i32, AppError> {
         let reponses = SessionRepository::find_reponses_by_session(pool, session_id).await?;
 
         // Compter les bonnes réponses consécutives depuis la fin

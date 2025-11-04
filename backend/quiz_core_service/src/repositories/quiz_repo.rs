@@ -9,10 +9,10 @@ impl QuizRepository {
     /// Trouver tous les quiz actifs
     pub async fn find_all_active(pool: &PgPool) -> Result<Vec<Quiz>, sqlx::Error> {
         sqlx::query_as::<_, Quiz>(
-            "SELECT * FROM quizzes WHERE is_active = true ORDER BY created_at DESC"
+            "SELECT * FROM quizzes WHERE is_active = true ORDER BY created_at DESC",
         )
-            .fetch_all(pool)
-            .await
+        .fetch_all(pool)
+        .await
     }
 
     /// Trouver un quiz par ID
@@ -26,12 +26,12 @@ impl QuizRepository {
     /// 🆕 Créer un quiz avec domain
     pub async fn create(
         pool: &PgPool,
-        domain: &str,                    // 🆕 NOUVEAU
+        domain: &str, // 🆕 NOUVEAU
         titre: &str,
         description: Option<&str>,
         niveau_difficulte: &str,
         version_app: &str,
-        scope: &str,                     // 🆕 RENOMMÉ
+        scope: &str, // 🆕 RENOMMÉ
         mode: &str,
         nb_questions: i32,
     ) -> Result<Quiz, sqlx::Error> {
@@ -43,38 +43,32 @@ impl QuizRepository {
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING *
-            "#
+            "#,
         )
-            .bind(domain)
-            .bind(titre)
-            .bind(description)
-            .bind(niveau_difficulte)
-            .bind(version_app)
-            .bind(scope)
-            .bind(mode)
-            .bind(nb_questions)
-            .fetch_one(pool)
-            .await
+        .bind(domain)
+        .bind(titre)
+        .bind(description)
+        .bind(niveau_difficulte)
+        .bind(version_app)
+        .bind(scope)
+        .bind(mode)
+        .bind(nb_questions)
+        .fetch_one(pool)
+        .await
     }
 
     /// 🆕 Trouver tous les quiz d'un domaine
-    pub async fn find_by_domain(
-        pool: &PgPool,
-        domain: &str,
-    ) -> Result<Vec<Quiz>, sqlx::Error> {
+    pub async fn find_by_domain(pool: &PgPool, domain: &str) -> Result<Vec<Quiz>, sqlx::Error> {
         sqlx::query_as::<_, Quiz>(
-            "SELECT * FROM quizzes WHERE domain = $1 AND is_active = true ORDER BY created_at DESC"
+            "SELECT * FROM quizzes WHERE domain = $1 AND is_active = true ORDER BY created_at DESC",
         )
-            .bind(domain)
-            .fetch_all(pool)
-            .await
+        .bind(domain)
+        .fetch_all(pool)
+        .await
     }
 
     /// 🆕 Compter les quiz par domaine
-    pub async fn count_by_domain(
-        pool: &PgPool,
-        domain: &str,
-    ) -> Result<i64, sqlx::Error> {
+    pub async fn count_by_domain(pool: &PgPool, domain: &str) -> Result<i64, sqlx::Error> {
         sqlx::query_scalar("SELECT COUNT(*) FROM quizzes WHERE domain = $1")
             .bind(domain)
             .fetch_one(pool)

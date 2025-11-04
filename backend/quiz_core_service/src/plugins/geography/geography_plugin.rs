@@ -40,17 +40,14 @@ impl QuizPlugin for GeographyPlugin {
             "saisie_texte" => self.validate_saisie_texte_geo(pool, question, answer).await,
 
             // V1 : Carte cliquable (pas encore implémenté)
-            "carte_cliquable" => {
-                Err(AppError::BadRequest(
-                    "Type 'carte_cliquable' pas encore implémenté (prévu V1)".to_string()
-                ))
-            }
+            "carte_cliquable" => Err(AppError::BadRequest(
+                "Type 'carte_cliquable' pas encore implémenté (prévu V1)".to_string(),
+            )),
 
-            _ => {
-                Err(AppError::BadRequest(
-                    format!("Type de question '{}' non supporté pour la géographie", question.type_question)
-                ))
-            }
+            _ => Err(AppError::BadRequest(format!(
+                "Type de question '{}' non supporté pour la géographie",
+                question.type_question
+            ))),
         }
     }
 
@@ -146,27 +143,24 @@ impl GeographyPlugin {
             AND valeur IS NOT NULL
             "#,
         )
-            .bind(question.id)
-            .fetch_all(pool)
-            .await?;
+        .bind(question.id)
+        .fetch_all(pool)
+        .await?;
 
         // Vérifier si la réponse normalisée correspond à l'une des variantes
         let is_correct = correct_answers.iter().any(|answer| answer == &normalized);
 
         if is_correct {
             Ok(ValidationResult::correct("Bonne réponse !")
-                .with_explanation(
-                    question.explanation.clone().unwrap_or_default()
-                ))
+                .with_explanation(question.explanation.clone().unwrap_or_default()))
         } else {
             // Récupérer la bonne réponse pour l'afficher
             let correct = correct_answers.first().cloned().unwrap_or_default();
-            Ok(ValidationResult::incorrect(
-                format!("Mauvaise réponse. La bonne réponse était : {}", correct)
-            )
-                .with_explanation(
-                    question.explanation.clone().unwrap_or_default()
-                ))
+            Ok(ValidationResult::incorrect(format!(
+                "Mauvaise réponse. La bonne réponse était : {}",
+                correct
+            ))
+            .with_explanation(question.explanation.clone().unwrap_or_default()))
         }
     }
 }

@@ -6,12 +6,12 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Quiz {
     pub id: Uuid,
-    pub domain: String,              // 🆕 "geography", "code_route", etc.
+    pub domain: String, // 🆕 "geography", "code_route", etc.
     pub titre: String,
     pub description: Option<String>,
     pub niveau_difficulte: String,
     pub version_app: String,
-    pub scope: String,               // 🆕 Renommé (ex: "europe", "france")
+    pub scope: String, // 🆕 Renommé (ex: "europe", "france")
     pub mode: String,
     pub collection_id: Option<Uuid>,
     pub nb_questions: i32,

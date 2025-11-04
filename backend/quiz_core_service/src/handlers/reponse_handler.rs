@@ -7,14 +7,14 @@ use shared::AppError;
 use uuid::Uuid;
 
 use crate::{
-    dto::reponse_dto::{CreateReponseRequest, CreateBulkReponsesRequest, UpdateReponseRequest},
+    AppState, // ✅ IMPORTANT
+    dto::reponse_dto::{CreateBulkReponsesRequest, CreateReponseRequest, UpdateReponseRequest},
     models::Reponse,
     services::reponse_service::ReponseService,
-    AppState,  // ✅ IMPORTANT
 };
 
 pub async fn get_question_reponses_handler(
-    State(app_state): State<AppState>,  // ✅ VÉRIFIER
+    State(app_state): State<AppState>, // ✅ VÉRIFIER
     Path(question_id): Path<Uuid>,
 ) -> Result<Json<Vec<Reponse>>, AppError> {
     let reponses = ReponseService::get_by_question_id(&app_state.pool, question_id).await?;
@@ -22,7 +22,7 @@ pub async fn get_question_reponses_handler(
 }
 
 pub async fn get_reponse_by_id_handler(
-    State(app_state): State<AppState>,  // ✅ VÉRIFIER
+    State(app_state): State<AppState>, // ✅ VÉRIFIER
     Path(id): Path<Uuid>,
 ) -> Result<Json<Reponse>, AppError> {
     let reponse = ReponseService::get_by_id(&app_state.pool, id).await?;
@@ -30,7 +30,7 @@ pub async fn get_reponse_by_id_handler(
 }
 
 pub async fn create_reponse_handler(
-    State(app_state): State<AppState>,  // ✅ VÉRIFIER
+    State(app_state): State<AppState>, // ✅ VÉRIFIER
     Json(payload): Json<CreateReponseRequest>,
 ) -> Result<Json<Reponse>, AppError> {
     let reponse = ReponseService::create(&app_state.pool, payload).await?;
@@ -38,7 +38,7 @@ pub async fn create_reponse_handler(
 }
 
 pub async fn create_bulk_reponses_handler(
-    State(app_state): State<AppState>,  // ✅ VÉRIFIER
+    State(app_state): State<AppState>, // ✅ VÉRIFIER
     Path(question_id): Path<Uuid>,
     Json(payload): Json<CreateBulkReponsesRequest>,
 ) -> Result<Json<Vec<Reponse>>, AppError> {
@@ -47,7 +47,7 @@ pub async fn create_bulk_reponses_handler(
 }
 
 pub async fn update_reponse_handler(
-    State(app_state): State<AppState>,  // ✅ VÉRIFIER
+    State(app_state): State<AppState>, // ✅ VÉRIFIER
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdateReponseRequest>,
 ) -> Result<Json<Reponse>, AppError> {
@@ -56,7 +56,7 @@ pub async fn update_reponse_handler(
 }
 
 pub async fn delete_reponse_handler(
-    State(app_state): State<AppState>,  // ✅ VÉRIFIER
+    State(app_state): State<AppState>, // ✅ VÉRIFIER
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, AppError> {
     ReponseService::delete(&app_state.pool, id).await?;
