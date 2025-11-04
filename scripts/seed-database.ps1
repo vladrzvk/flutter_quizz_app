@@ -52,7 +52,7 @@ Write-Host ""
 # SEED
 # ============================================
 
-Write-Host "🌱 Seed de la base de données" -ForegroundColor Cyan
+Write-Host " Seed de la base de données" -ForegroundColor Cyan
 Write-Host ""
 
 # Chemin relatif depuis le dossier scripts
@@ -60,39 +60,35 @@ $seedFile = Join-Path (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCo
 
 # Vérifier que le fichier existe
 if (!(Test-Path $seedFile)) {
-    Write-Host "❌ Fichier de seed introuvable : $seedFile" -ForegroundColor Red
+    Write-Host "Fichier de seed introuvable : $seedFile" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "✅ Fichier de seed trouvé" -ForegroundColor Green
+Write-Host "Fichier de seed trouvé" -ForegroundColor Green
 Write-Host ""
 
 # Copier dans le conteneur PostgreSQL
-Write-Host "📤 Copie du fichier dans le conteneur..." -ForegroundColor Yellow
+Write-Host "Copie du fichier dans le conteneur..." -ForegroundColor Yellow
 docker cp "$seedFile" quiz-postgres:/tmp/seed.sql
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Erreur lors de la copie" -ForegroundColor Red
+    Write-Host " Erreur lors de la copie" -ForegroundColor Red
     exit 1
 }
 
 # Exécuter le seed
-Write-Host "🚀 Exécution du seed..." -ForegroundColor Yellow
+Write-Host " Exécution du seed..." -ForegroundColor Yellow
 docker exec quiz-postgres psql -U quiz_user -d quiz_db -f /tmp/seed.sql
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Erreur lors de l'exécution des seeds" -ForegroundColor Red
+    Write-Host " Erreur lors de l'exécution des seeds" -ForegroundColor Red
     exit 1
 }
 
 Write-Host ""
-Write-Host "✅ Seed terminé !" -ForegroundColor Green
+Write-Host "Seed terminé !" -ForegroundColor Green
 Write-Host ""
 
 # Afficher les statistiques
-Write-Host "📊 Statistiques :" -ForegroundColor Cyan
+Write-Host "Statistiques :" -ForegroundColor Cyan
 docker exec quiz-postgres psql -U quiz_user -d quiz_db -c "SELECT (SELECT COUNT(*) FROM quizzes) as nb_quizzes, (SELECT COUNT(*) FROM questions) as nb_questions, (SELECT COUNT(*) FROM reponses) as nb_reponses;"
-
-Write-Host ""
-Write-Host "🎯 Tester l'API :" -ForegroundColor Cyan
-Write-Host "   curl http://localhost:8080/api/v1/quizzes`"   -ForegroundColor Gray
