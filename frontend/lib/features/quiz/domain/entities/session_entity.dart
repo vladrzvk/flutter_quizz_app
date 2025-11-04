@@ -28,17 +28,17 @@ class SessionEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-    id,
-    userId,
-    quizId,
-    score,
-    scoreMax,
-    pourcentage,
-    tempsTotalSec,
-    dateDebut,
-    dateFin,
-    status,
-  ];
+        id,
+        userId,
+        quizId,
+        score,
+        scoreMax,
+        pourcentage,
+        tempsTotalSec,
+        dateDebut,
+        dateFin,
+        status,
+      ];
 
   // 🎯 MÉTHODES MÉTIER
 

@@ -11,7 +11,7 @@ class SubmitAnswer implements UseCase<AnswerEntity, SubmitAnswerParams> {
 
   SubmitAnswer(this.repository);
 
-  @override  // ✅ Ajouter @override
+  @override // ✅ Ajouter @override
   Future<Either<Failure, AnswerEntity>> call(SubmitAnswerParams params) {
     return repository.submitAnswer(
       sessionId: params.sessionId,
@@ -40,11 +40,12 @@ class SubmitAnswerParams extends Equatable {
   });
 
   @override
-  List<Object?> get props => [  // ✅ Object? pour accepter les nulls
-    sessionId,
-    questionId,
-    reponseId,      // ✅ Sans le ?
-    valeurSaisie,   // ✅ Sans le ,
-    timeSpentSeconds,
-  ];
+  List<Object?> get props => [
+        // ✅ Object? pour accepter les nulls
+        sessionId,
+        questionId,
+        reponseId, // ✅ Sans le ?
+        valeurSaisie, // ✅ Sans le ,
+        timeSpentSeconds,
+      ];
 }

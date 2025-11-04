@@ -20,16 +20,16 @@ class QuizListBloc extends Bloc<QuizListEvent, QuizListState> {
 
   /// Charge la liste des quiz
   Future<void> _onLoadQuizList(
-      LoadQuizListEvent event,
-      Emitter<QuizListState> emit,
-      ) async {
+    LoadQuizListEvent event,
+    Emitter<QuizListState> emit,
+  ) async {
     emit(const QuizListLoading());
 
     final result = await getQuizList(NoParams());
 
     result.fold(
-          (failure) => emit(QuizListError(failure.message)),
-          (quizzes) {
+      (failure) => emit(QuizListError(failure.message)),
+      (quizzes) {
         if (quizzes.isEmpty) {
           emit(const QuizListEmpty());
         } else {
@@ -41,16 +41,16 @@ class QuizListBloc extends Bloc<QuizListEvent, QuizListState> {
 
   /// Rafraîchit la liste des quiz
   Future<void> _onRefreshQuizList(
-      RefreshQuizListEvent event,
-      Emitter<QuizListState> emit,
-      ) async {
+    RefreshQuizListEvent event,
+    Emitter<QuizListState> emit,
+  ) async {
     // Garde l'état actuel pendant le refresh
     final currentState = state;
 
     final result = await getQuizList(NoParams());
 
     result.fold(
-          (failure) {
+      (failure) {
         // En cas d'erreur, on garde l'état précédent
         if (currentState is QuizListLoaded) {
           // Optionnel : afficher un snackbar d'erreur
@@ -58,7 +58,7 @@ class QuizListBloc extends Bloc<QuizListEvent, QuizListState> {
           emit(QuizListError(failure.message));
         }
       },
-          (quizzes) {
+      (quizzes) {
         if (quizzes.isEmpty) {
           emit(const QuizListEmpty());
         } else {
@@ -70,9 +70,9 @@ class QuizListBloc extends Bloc<QuizListEvent, QuizListState> {
 
   /// Sélectionne un quiz
   Future<void> _onSelectQuiz(
-      SelectQuizEvent event,
-      Emitter<QuizListState> emit,
-      ) async {
+    SelectQuizEvent event,
+    Emitter<QuizListState> emit,
+  ) async {
     if (state is! QuizListLoaded) return;
 
     final currentState = state as QuizListLoaded;
@@ -80,8 +80,8 @@ class QuizListBloc extends Bloc<QuizListEvent, QuizListState> {
     final result = await getQuizById(GetQuizByIdParams(quizId: event.quizId));
 
     result.fold(
-          (failure) => emit(QuizListError(failure.message)),
-          (quiz) => emit(currentState.copyWith(selectedQuiz: quiz)),
+      (failure) => emit(QuizListError(failure.message)),
+      (quiz) => emit(currentState.copyWith(selectedQuiz: quiz)),
     );
   }
 }

@@ -40,6 +40,5 @@ class ValidationFailure extends Failure {
 
 /// Erreur non autorisée (401, 403)
 class UnauthorizedFailure extends Failure {
-  const UnauthorizedFailure([String message = 'Non autorisé'])
-      : super(message);
+  const UnauthorizedFailure([String message = 'Non autorisé']) : super(message);
 }

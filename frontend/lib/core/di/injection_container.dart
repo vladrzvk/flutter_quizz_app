@@ -19,7 +19,6 @@ final sl = GetIt.instance;
 
 /// Initialise toutes les dépendances
 Future<void> initializeDependencies() async {
-
   // ========================================
   // 🌐 CORE - External
   // ========================================
@@ -54,12 +53,12 @@ Future<void> initializeDependencies() async {
 
   // DataSources
   sl.registerLazySingleton<QuizRemoteDataSource>(
-        () => QuizRemoteDataSourceImpl(dio: sl()),
+    () => QuizRemoteDataSourceImpl(dio: sl()),
   );
 
   // Repositories
   sl.registerLazySingleton<QuizRepository>(
-        () => QuizRepositoryImpl(remoteDataSource: sl()),
+    () => QuizRepositoryImpl(remoteDataSource: sl()),
   );
 
   // Use Cases
@@ -73,14 +72,14 @@ Future<void> initializeDependencies() async {
 
   // BLoCs - Factory (nouvelle instance à chaque fois)
   sl.registerFactory(
-        () => QuizListBloc(
+    () => QuizListBloc(
       getQuizList: sl(),
       getQuizById: sl(),
     ),
   );
 
   sl.registerFactory(
-        () => QuizSessionBloc(
+    () => QuizSessionBloc(
       getQuizQuestions: sl(),
       startQuizSession: sl(),
       submitAnswer: sl(),

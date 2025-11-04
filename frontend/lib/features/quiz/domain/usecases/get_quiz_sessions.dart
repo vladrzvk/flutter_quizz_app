@@ -6,13 +6,15 @@ import '../repositories/quiz_repository.dart';
 import 'usecase.dart';
 
 /// Use Case : Démarrer une session de quiz
-class StartQuizSession implements UseCase<SessionEntity, StartQuizSessionParams> {
+class StartQuizSession
+    implements UseCase<SessionEntity, StartQuizSessionParams> {
   final QuizRepository repository;
 
   StartQuizSession(this.repository);
 
   @override
-  Future<Either<Failure, SessionEntity>> call(StartQuizSessionParams params) async {
+  Future<Either<Failure, SessionEntity>> call(
+      StartQuizSessionParams params) async {
     return await repository.startSession(
       quizId: params.quizId,
       userId: params.userId,

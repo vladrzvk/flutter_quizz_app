@@ -51,8 +51,8 @@ class QuestionCard extends StatelessWidget {
             Text(
               question.questionText,
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
 
             const SizedBox(height: 16),
@@ -98,7 +98,8 @@ class QuestionCard extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.lightbulb_outline, size: 20, color: Colors.blue[700]),
+                    Icon(Icons.lightbulb_outline,
+                        size: 20, color: Colors.blue[700]),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
