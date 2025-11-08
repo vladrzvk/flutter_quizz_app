@@ -55,7 +55,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Backend Quiz (DEV avec hot reload)
   backend:
     build:
       context: .

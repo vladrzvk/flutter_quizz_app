@@ -1,0 +1,116 @@
+# .github/workflows/coverage-manual.yml
+name: Code Coverage (Manual)
+
+# ℹ️ COMMENT LANCER CE WORKFLOW :
+# 1. GitHub → Actions → "Code Coverage (Manual)"
+# 2. Run workflow → Choisir branche → Run workflow
+# 
+# OU via GitHub CLI :
+# gh workflow run coverage-manual.yml
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload_codecov:
+        description: 'Upload vers Codecov ?'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  coverage:
+    name: Generate Coverage
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: quiz_user
+          POSTGRES_PASSWORD: quiz_test
+          POSTGRES_DB: quiz_db_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    env:
+      DATABASE_URL: postgresql://quiz_user:quiz_test@localhost:5432/quiz_db_test
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+
+      - name: Cache cargo
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            backend/target
+          key: ${{ runner.os }}-cargo-coverage-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install cargo-llvm-cov
+        run: cargo install cargo-llvm-cov
+
+      - name: Install SQLx CLI
+        run: cargo install sqlx-cli --no-default-features --features postgres
+
+      - name:  Run migrations
+        working-directory: backend/quiz_core_service
+        run: sqlx migrate run
+
+      - name: Generate coverage report
+        working-directory: backend/quiz_core_service
+        run: |
+          cargo llvm-cov --html --output-dir ../../coverage-report
+          cargo llvm-cov --summary-only
+
+      - name: Upload coverage report (artifact)
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: coverage-report/
+          retention-days: 30
+
+      - name: Upload to Codecov
+        if: inputs.upload_codecov == 'true'
+        working-directory: backend/quiz_core_service
+        run: |
+          cargo llvm-cov --codecov --output-path codecov.json
+          # Note: Pour activer Codecov, ajouter CODECOV_TOKEN dans secrets GitHub
+          echo " Codecov upload disabled (no token configured)"
+
+      - name: Check coverage threshold
+        working-directory: backend/quiz_core_service
+        run: |
+          COVERAGE=$(cargo llvm-cov --summary-only | grep -oP 'TOTAL.*\K\d+\.\d+' | head -1 || echo "0")
+          echo " Coverage: $COVERAGE%"
+          
+          THRESHOLD=85.0
+          
+          if (( $(echo "$COVERAGE >= $THRESHOLD" | bc -l) )); then
+            echo " Coverage $COVERAGE% meets $THRESHOLD% threshold"
+          else
+            echo "Coverage $COVERAGE% is below $THRESHOLD% threshold"
+            echo "This is just a warning for now"
+          fi
+
+      - name: 💬 Comment with coverage
+        run: |
+          echo "### Coverage Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Coverage report generated successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Download the HTML report from the artifacts section below" >> $GITHUB_STEP_SUMMARY

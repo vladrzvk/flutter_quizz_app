@@ -76,17 +76,291 @@ Le serveur démarre sur `http://localhost:8080`
 
 Voir [SETUP.md](docs/SETUP.md) pour le guide complet.
 
+
 ## 🧪 Tests
+
+### **Démarrer la Base de Données de Test**
+
 ```bash
-# Lancer tous les tests
-cargo test
+# Méthode 1 : Avec Make
+make db-up
 
-# Tests avec logs
-RUST_LOG=debug cargo test -- --nocapture
+# Méthode 2 : Avec Docker Compose
+docker-compose -f ../docker-compose.test.yml up -d
 
-# Tests d'intégration uniquement
-cargo test --test '*'
+# Vérifier que la DB est démarrée
+docker ps
 ```
+
+**Connection String** : `postgresql://quiz_user:quiz_test@localhost:5433/quiz_db_test`
+
+### **Lancer les Tests**
+
+```bash
+# Tous les tests
+make test
+
+# Tests avec démarrage auto de la DB
+make test-db
+
+# Tests API seulement
+make test-api
+
+# Tests unitaires seulement
+make test-unit
+
+# Un test spécifique
+make test-one TEST=test_health_endpoint
+
+# Avec logs détaillés
+cargo test -- --nocapture
+```
+
+### **Templates de Tests Disponibles**
+
+Le projet contient 4 templates de tests que tu peux copier/adapter :
+
+1. **`tests/api_health_test.rs`** - Tests simples (health check)
+2. **`tests/api_quizzes_test.rs`** - Tests CRUD complets
+3. **`tests/api_sessions_test.rs`** - Tests de workflow
+4. **`tests/api_answers_test.rs`** - Tests de logique métier
+
+#### **Comment utiliser un template ?**
+
+```bash
+# 1. Copier un template
+cp tests/api_health_test.rs tests/api_mon_endpoint_test.rs
+
+# 2. Adapter le contenu
+# - Remplacer les URLs
+# - Adapter les JSON
+# - Ajouter tes assertions
+
+# 3. Lancer ton nouveau test
+cargo test api_mon_endpoint
+```
+
+---
+
+## 📊 Code Coverage
+
+### **Installer cargo-llvm-cov**
+
+```bash
+cargo install cargo-llvm-cov
+```
+
+### **Générer le Coverage**
+
+```bash
+# Coverage HTML (s'ouvre dans le navigateur)
+make coverage
+
+# Résumé du coverage
+make coverage-summary
+
+# Générer JSON pour Codecov
+make coverage-json
+```
+
+### **Objectif de Coverage**
+
+🎯 **Objectif : 85% minimum**
+
+Le coverage actuel se trouve dans le rapport HTML généré.
+
+---
+
+## 🎨 Formatage du Code
+
+### **Option 1 : Avec Make**
+
+```bash
+# Formater le code
+make fmt
+
+# Vérifier le formatage
+make check
+
+# Linter (Clippy)
+make clippy
+
+# Tout à la fois
+make lint
+```
+
+### **Option 2 : Script Standalone**
+
+Puisque tu n'as pas accès au dossier `.git` dans ton IDE :
+
+```bash
+# Linux/Mac
+./scripts/format-all.sh
+
+# Windows PowerShell
+.\scripts\format-all.ps1
+```
+
+### **Option 3 : Configuration IDE (VSCode)**
+
+Créer `.vscode/settings.json` :
+
+```json
+{
+  "editor.formatOnSave": true,
+  "rust-analyzer.rustfmt.rangeFormatting.enable": true,
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer"
+  }
+}
+```
+
+
+
+## 🔄 GitHub Actions
+
+### **Workflows Disponibles**
+
+Le projet contient 3 workflows :
+
+#### **1. Format (Automatique)**
+- **Trigger** : Push sur `main` ou `develop`
+- **Durée** : ~30 secondes
+- **Actions** : Vérifie que le code est formaté
+
+#### **2. Tests (Manuel)**
+- **Trigger** : Manuel (workflow_dispatch)
+- **Durée** : ~2-3 minutes
+- **Actions** : Lance tous les tests avec PostgreSQL
+
+**Comment lancer** :
+1. Aller sur GitHub → **Actions** tab
+2. Cliquer sur "**Backend Tests (Manual)**"
+3. Cliquer "**Run workflow**" (bouton à droite)
+4. Choisir la branche (main/develop)
+5. Choisir le type de test (all/unit/api)
+6. Cliquer "**Run workflow**" (bouton vert)
+
+#### **3. Coverage (Manuel)**
+- **Trigger** : Manuel (workflow_dispatch)
+- **Durée** : ~3-4 minutes
+- **Actions** : Génère rapport de coverage
+
+**Comment lancer** : Même processus que Tests
+
+**Récupérer le rapport** :
+1. Aller dans l'exécution du workflow
+2. Scroll en bas → **Artifacts**
+3. Télécharger `coverage-report`
+4. Ouvrir `index.html` dans un navigateur
+
+---
+
+## ☸️ Kubernetes Local
+
+### **Setup Docker Desktop**
+
+1. **Activer Kubernetes**
+    - Docker Desktop → Settings → Kubernetes
+    - Cocher "Enable Kubernetes"
+    - Apply & Restart
+
+2. **Vérifier**
+   ```bash
+   kubectl version
+   kubectl get nodes
+   ```
+
+### **Déployer le Backend**
+
+```bash
+# 1. Créer le namespace
+kubectl apply -f k8s/local/00-00_namespace.yaml
+
+# 2. Déployer PostgreSQL
+kubectl apply -f k8s/local/01-postgres.yaml
+
+# 3. Attendre que PostgreSQL soit prêt
+kubectl wait --for=condition=ready pod -l app=postgres -n quiz-app --timeout=60s
+
+# 4. Déployer le backend
+kubectl apply -f k8s/local/02-backend-deployment.yaml
+kubectl apply -f k8s/local/03-backend-service.yaml
+
+# 5. Configurer l'ingress
+kubectl apply -f k8s/local/04-ingress.yaml
+```
+
+### **Vérifier le Déploiement**
+
+```bash
+# Voir les pods
+kubectl get pods -n quiz-app
+
+# Voir les services
+kubectl get svc -n quiz-app
+
+# Voir les logs
+kubectl logs -f deployment/quiz-backend -n quiz-app
+
+# Tester l'API
+curl http://localhost/health
+```
+
+### **Nettoyer**
+
+```bash
+# Tout supprimer
+kubectl delete namespace quiz-app
+```
+
+---
+
+## 📝 Commandes Utiles
+
+### **Make (Recommandé)**
+
+```bash
+make help           # Afficher toutes les commandes
+make dev            # Setup environnement de dev
+make ci             # Workflow CI complet
+make clean-all      # Nettoyage complet
+```
+
+### **Cargo**
+
+```bash
+cargo build                    # Compiler
+cargo run                      # Lancer le serveur
+cargo test                     # Lancer les tests
+cargo fmt                      # Formater
+cargo clippy                   # Linter
+cargo clean                    # Nettoyer
+```
+
+### **Docker**
+
+```bash
+# DB test
+docker-compose -f ../docker-compose.test.yml up -d
+docker-compose -f ../docker-compose.test.yml down
+docker-compose -f ../docker-compose.test.yml logs -f
+
+# Se connecter à la DB
+docker exec -it quiz-postgres-test psql -U quiz_user -d quiz_db_test
+```
+
+### **Kubernetes**
+
+```bash
+kubectl get pods -n quiz-app              # Lister pods
+kubectl logs -f <pod-name> -n quiz-app    # Logs
+kubectl describe pod <pod-name> -n quiz-app  # Détails
+kubectl exec -it <pod-name> -n quiz-app -- sh  # Shell dans le pod
+```
+
+---
+
 
 ## 📖 Documentation
 
@@ -96,6 +370,9 @@ cargo test --test '*'
 - 📕 [Guide développeur](docs/DEVELOPMENT.md)
 - 📔 [Créer un plugin](docs/PLUGIN_GUIDE.md)
 - 📓 [Base de données](docs/DATABASE.md)
+
+
+
 
 ## 🔌 Créer un Nouveau Plugin
 ```rust

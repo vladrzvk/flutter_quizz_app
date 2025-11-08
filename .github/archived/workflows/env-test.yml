@@ -1,0 +1,51 @@
+# .github/workflows/env-test.yml
+name: Environment Variables
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: 'Your name'
+        required: true
+        default: 'World'
+      environment:
+        description: 'Environment'
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - production
+
+env:
+  GLOBAL_VAR: "I am global"
+
+jobs:
+  env-demo:
+    runs-on: ubuntu-latest
+    env:
+      JOB_VAR: "I am job-level"
+
+    steps:
+      - name: Print inputs
+        run: |
+          echo "Name: ${{ inputs.name }}"
+          echo "Environment: ${{ inputs.environment }}"
+
+      - name: Print env vars
+        run: |
+          echo "Global: $GLOBAL_VAR"
+          echo "Job: $JOB_VAR"
+        env:
+          STEP_VAR: "I am step-level"
+
+      - name: Conditional execution
+        if: inputs.environment == 'production'
+        run: echo "🚀 Production deployment!"
+
+
+
+#
+#        act workflow_dispatch -W .\.github\workflows\env-test.yml `
+#        --input name="Vlad" `
+#        --input environment="production"

@@ -1,0 +1,95 @@
+# .github/workflows/tests-manual.yml
+name: 🧪 Backend Tests (Manual)
+
+# ℹ️ COMMENT LANCER CE WORKFLOW :
+# 1. Aller sur GitHub → Actions tab
+# 2. Cliquer sur "Backend Tests (Manual)" dans la liste
+# 3. Cliquer sur "Run workflow" (bouton à droite)
+# 4. Choisir la branche (main/develop)
+# 5. Cliquer "Run workflow" (bouton vert)
+# 
+# OU via GitHub CLI :
+# gh workflow run tests-manual.yml --ref main
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Type de tests à exécuter'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all        # Tous les tests
+          - unit       # Tests unitaires seulement
+          - api        # Tests API seulement
+
+jobs:
+  tests:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: quiz_user
+          POSTGRES_PASSWORD: quiz_test
+          POSTGRES_DB: quiz_db_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    env:
+      DATABASE_URL: postgresql://quiz_user:quiz_test@localhost:5432/quiz_db_test
+      RUST_BACKTRACE: 1
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🦀 Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 💾 Cache cargo
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            backend/target
+          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: 🔧 Install SQLx CLI
+        run: cargo install sqlx-cli --no-default-features --features postgres
+
+      - name: 🗄️ Run database migrations
+        working-directory: backend/quiz_core_service
+        run: sqlx migrate run
+
+      - name: 🧪 Run unit tests
+        if: inputs.test_type == 'all' || inputs.test_type == 'unit'
+        working-directory: backend/quiz_core_service
+        run: cargo test --lib --verbose
+
+      - name: 🌐 Run API tests
+        if: inputs.test_type == 'all' || inputs.test_type == 'api'
+        working-directory: backend/quiz_core_service
+        run: cargo test --test '*' --verbose
+
+      - name: ✅ Tests Summary
+        if: success()
+        run: |
+          echo "✅ All tests passed!"
+          echo "Test type: ${{ inputs.test_type }}"
+
+      - name: ❌ Tests Failed
+        if: failure()
+        run: |
+          echo "❌ Tests failed!"
+          echo "Check logs above for details"
+          exit 1

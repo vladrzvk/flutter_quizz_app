@@ -94,7 +94,7 @@ metadata:
     environment: local
 ```
 ```bash
-kubectl apply -f k8s/local/namespace.yaml
+kubectl apply -f k8s/local/00_namespace.yaml
 ```
 
 ### 3. Script de Setup Automatique
@@ -123,7 +123,7 @@ echo -e "${GREEN}✅ Kubernetes actif${NC}"
 
 # Créer le namespace
 echo -e "${BLUE}📦 Création du namespace quiz-app${NC}"
-kubectl apply -f k8s/local/namespace.yaml
+kubectl apply -f k8s/local/00_namespace.yaml
 
 # Installer NGINX Ingress Controller
 echo -e "${BLUE}🔧 Installation NGINX Ingress Controller${NC}"
