@@ -51,9 +51,27 @@ kubectl get nodes
 
 ## Etape 3 : Installer NGINX Ingress
 
+# Notes avec Docker-Desktop
+Vous avez créé le cluster via Docker Desktop UI. Le label ingress-ready=true n'a pas été ajouté automatiquement aux nodes.
+Ce label est normalement ajouté quand on crée le cluster avec un fichier de configuration kind.
+
+# Ajouter le Label au Node
+# Lister les nodes
+kubectl get nodes
+
+# Ajouter le label au control-plane node
+kubectl label node <nom-du-control-plane-node> ingress-ready=true
+
+# Exemple si le node s'appelle "kind-control-plane"
+kubectl label node kind-control-plane ingress-ready=true
+
+
+
 ```powershell
 # Installer Ingress Controller
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.9.4/deploy/static/provider/kind/deploy.yaml
+
+kubectl apply -f .\manifests\000-my-ingress.yaml
+#kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.9.4/deploy/static/provider/kind/deploy.yaml
 
 # Attendre que ce soit pret
 kubectl wait --namespace ingress-nginx `
