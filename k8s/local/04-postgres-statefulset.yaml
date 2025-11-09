@@ -1,0 +1,85 @@
+# k8s/local/04-postgres-statefulset.yaml
+# Base de données PostgreSQL avec volume persistant
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: quiz-app
+  labels:
+    app: postgres
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          ports:
+            - containerPort: 5432
+              name: postgres
+              protocol: TCP
+          
+          env:
+            - name: POSTGRES_USER
+              value: "quiz_user"
+            # Mot de passe simple "quiz" pour cohérence avec le Secret
+            - name: POSTGRES_PASSWORD
+              value: "quiz"
+            - name: POSTGRES_DB
+              value: "quiz_db"
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+          
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - quiz_user
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - quiz_user
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 3
+  
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-storage
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        # Pour Docker Desktop, utiliser hostpath
+        storageClassName: hostpath
+        resources:
+          requests:
+            storage: 10Gi

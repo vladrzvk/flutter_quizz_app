@@ -1,0 +1,63 @@
+# k8s/kind/manifests/10-ingress.yaml
+# Ingress NGINX avec securite renforcee
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: quiz-app-ingress
+  namespace: quiz-app
+  labels:
+    app: quiz-backend
+  annotations:
+    # NGINX Ingress annotations
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"  # true en production avec TLS
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    
+    # CORS (a restreindre en production)
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization"
+    
+    # Security headers
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Frame-Options: DENY";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-XSS-Protection: 1; mode=block";
+      more_set_headers "Referrer-Policy: strict-origin-when-cross-origin";
+    
+    # Rate limiting (protection DDoS)
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-connections: "50"
+    
+    # Timeouts
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
+
+spec:
+  ingressClassName: nginx
+  
+  # TLS (activer en production avec cert-manager)
+  # tls:
+  #   - hosts:
+  #       - quiz-app.local
+  #     secretName: quiz-app-tls
+  
+  rules:
+    - host: quiz-app.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: quiz-backend
+                port:
+                  number: 8080
+
+# NOTE : Pour activer TLS en production :
+# 1. Installer cert-manager
+# 2. Creer un Certificate resource
+# 3. Activer ssl-redirect
+# 4. Ajouter la section tls ci-dessus

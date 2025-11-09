@@ -1,0 +1,129 @@
+# k8s/kind/optional/gatekeeper-policies.yaml
+# OPA Gatekeeper Policies (OPTIONNEL)
+# Installer Gatekeeper d'abord : kubectl apply -f https://raw.githubusercontent.com/open-policy-agent/gatekeeper/master/deploy/gatekeeper.yaml
+
+---
+# ConstraintTemplate : Interdire images latest
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8sdisallowedtags
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sDisallowedTags
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            tags:
+              type: array
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sdisallowedtags
+        
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          tags := [tag | tag := input.parameters.tags[_]]
+          satisfied := [good | tag := tags[_] ; good := endswith(container.image, concat(":", ["", tag]))]
+          not any(satisfied)
+          msg := sprintf("Container <%v> uses a disallowed tag <%v>; disallowed tags are %v", [container.name, container.image, tags])
+        }
+
+---
+# Constraint : Bloquer tag latest
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sDisallowedTags
+metadata:
+  name: no-latest-tag
+spec:
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    namespaces:
+      - quiz-app
+  parameters:
+    tags: ["latest"]
+
+---
+# ConstraintTemplate : Exiger resources requests/limits
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8srequiredresources
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequiredResources
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srequiredresources
+        
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          not container.resources.requests
+          msg := sprintf("Container <%v> missing resource requests", [container.name])
+        }
+        
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          not container.resources.limits
+          msg := sprintf("Container <%v> missing resource limits", [container.name])
+        }
+
+---
+# Constraint : Exiger resources
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequiredResources
+metadata:
+  name: must-have-resources
+spec:
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    namespaces:
+      - quiz-app
+
+---
+# ConstraintTemplate : Interdire privileged containers
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8spsprivileged
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sPSPrivileged
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8spsprivileged
+        
+        violation[{"msg": msg}] {
+          c := input.review.object.spec.containers[_]
+          c.securityContext.privileged
+          msg := sprintf("Container <%v> is privileged", [c.name])
+        }
+
+---
+# Constraint : Bloquer privileged
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sPSPrivileged
+metadata:
+  name: no-privileged-containers
+spec:
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    namespaces:
+      - quiz-app

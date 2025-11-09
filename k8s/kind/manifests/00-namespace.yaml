@@ -1,0 +1,15 @@
+# k8s/kind/manifests/00-namespace.yaml
+# Namespace avec Pod Security Standards niveau restricted
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: quiz-app
+  labels:
+    name: quiz-app
+    environment: local
+    managed-by: kubectl
+    # Pod Security Standards
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
