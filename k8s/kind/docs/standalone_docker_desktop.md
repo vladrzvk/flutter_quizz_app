@@ -63,11 +63,9 @@ kubectl get nodes
 kubectl label node desktop-control-plane ingress-ready=true
 
 # Exemple si le node s'appelle "kind-control-plane"
-kubectl label node kind-control-plane ingress-ready=true
+# (kubectl label node kind-control-plane ingress-ready=true)
 
 
-
-```powershell
 # Installer Ingress Controller
 
 kubectl apply -f .\manifests\000-my-ingress.yaml
@@ -78,16 +76,15 @@ kubectl wait --namespace ingress-nginx `
   --for=condition=ready pod `
   --selector=app.kubernetes.io/component=controller `
   --timeout=120s
-```
+
 
 ---
 
 ## Etape 4 : Build Image Backend
 
-```powershell
+
 cd backend
 docker build -t quiz-backend:local -f ../../docker/backend-dev.Dockerfile .
-```
 
 **IMPORTANT avec Docker Desktop kind** :
 L'image est **automatiquement disponible** dans le cluster.
@@ -97,7 +94,7 @@ L'image est **automatiquement disponible** dans le cluster.
 
 ## Etape 5 : Deployer Application
 
-```powershell
+
 cd ../k8s/kind/manifests
 
 # Deployer tous les manifests
@@ -119,7 +116,7 @@ kubectl wait --for=condition=ready pod -l app=postgres -n quiz-app --timeout=120
 kubectl apply -f 08-backend-service.yaml
 kubectl apply -f 09-backend-deployment.yaml
 kubectl apply -f 10-ingress.yaml
-```
+
 
 ---
 
@@ -135,7 +132,7 @@ Editer `C:\Windows\System32\drivers\etc\hosts` (admin requis) :
 
 ## Etape 7 : Tester
 
-```powershell
+
 # Health check
 curl http://quiz-app.local/health
 
@@ -144,7 +141,7 @@ curl http://quiz-app.local/api/v1/quizzes
 
 # Voir logs
 kubectl logs -f deployment/quiz-backend -n quiz-app
-```
+
 
 ---
 

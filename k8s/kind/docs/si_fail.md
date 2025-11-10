@@ -212,14 +212,34 @@ kubectl rollout restart deployment/quiz-backend -n quiz-app
 # Vérifier
 kubectl get pods -n quiz-app -w
 
-# Nouvelle Erreur : Image Backend Non Trouvée
-Container image "quiz-backend:local" is not present with pull policy of Never
-Error: ErrImageNeverPull
+# Nouvelle erreur : ImagePullBackOff - Image Pas dans les Nodes kind
+Problème
+Failed to pull image "quiz-backend:local": pull access denied
+L'image quiz-backend:local existe sur votre PC mais pas dans les nodes kind.
+5s          Normal    Pulling                 pod/quiz-backend-6c66d6749c-ggqm7                   Pulling image "quiz-backend:local"
+4s          Warning   Failed                  pod/quiz-backend-6c66d6749c-ggqm7                   Error: ErrImagePull
+4s          Warning   Failed                  pod/quiz-backend-6c66d6749c-ggqm7                   Failed to pull image "quiz-backend:local": failed to pull and unpack image "docker.io/library/quiz-backend:local": failed to resolve reference "docker.io/library/quiz-backend:local": pull access denied, repository does not exist or may require authorization: server message: insufficient_scope: authorization failed
 
-Solution : Changer imagePullPolicy
-Avec Docker Desktop kind, utilisez IfNotPresent au lieu de Never.
-containers:
-- name: quiz-backend
-  image: quiz-backend:local
-  imagePullPolicy: IfNotPresent
 
+Solution manuellement Charger l'Image dans kind
+# 1. Sauvegarder l'image
+docker save quiz-backend:local -o quiz-backend.tar
+# Control-plane
+Get-Content quiz-backend.tar -Encoding Byte -ReadCount 0 | docker exec -i desktop-control-plane ctr -n k8s.io images import -
+
+# Worker 1
+Get-Content quiz-backend.tar -Encoding Byte -ReadCount 0 | docker exec -i desktop-worker ctr -n k8s.io images import -
+
+# Worker 2
+Get-Content quiz-backend.tar -Encoding Byte -ReadCount 0 | docker exec -i desktop-worker2 ctr -n k8s.io images import -
+
+
+del quiz-backend.tar
+
+
+# 6. Redéployer
+kubectl delete deployment quiz-backend -n quiz-app
+kubectl apply -f k8s/kind/manifests/09-backend-deployment.yaml
+
+# 7. Observer
+kubectl get pods -n quiz-app -w

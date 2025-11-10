@@ -78,11 +78,14 @@ spec:
 #              cpu: "100m"
       
       containers:
+#        - name: quiz-backend
+#          # Image locale chargee dans kind
+#          image: quiz-backend:local
+#          imagePullPolicy: IfNotPresent
+#
         - name: quiz-backend
-          # Image locale chargee dans kind
-          image: quiz-backend:local
-          imagePullPolicy: IfNotPresent
-          
+          image: findajobchomeur/quiz-backend:latest  # Votre image Docker Hub
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
               name: http
