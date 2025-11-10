@@ -77,11 +77,9 @@ kubectl wait --namespace ingress-nginx `
   --selector=app.kubernetes.io/component=controller `
   --timeout=120s
 
-
 ---
 
 ## Etape 4 : Build Image Backend
-
 
 cd backend
 docker build -t quiz-backend:local -f ../../docker/backend-dev.Dockerfile .
@@ -132,6 +130,9 @@ Editer `C:\Windows\System32\drivers\etc\hosts` (admin requis) :
 
 ## Etape 7 : Tester
 
+
+# Port-forward (si ingress ne marche pas)
+kubectl port-forward -n quiz-app svc/quiz-backend 8080:8080
 
 # Health check
 curl http://quiz-app.local/health
@@ -196,7 +197,7 @@ kind delete cluster --name quiz-cluster
 
 ### Via kubectl
 
-```powershell
+
 # Contexte actuel
 kubectl config current-context
 
@@ -208,63 +209,7 @@ kubectl config use-context <context-name>
 
 # Voir resources
 kubectl get all -n quiz-app
-```
 
----
-
-## Manifests : Modification Necessaire
-
-Dans `09-backend-deployment.yaml`, l'image est deja correcte :
-
-```yaml
-image: quiz-backend:local
-imagePullPolicy: Never  # Correct pour kind
-```
-
-**Avec Docker Desktop kind** : `imagePullPolicy: Never` fonctionne parfaitement car l'image est dans le daemon Docker local.
-
----
-
-## Troubleshooting
-
-### Image non trouvee
-
-```powershell
-# Verifier image locale
-docker images | grep quiz-backend
-
-# Rebuilder si necessaire
-docker build -t quiz-backend:local -f docker/backend.Dockerfile backend/
-```
-
-### Cluster non accessible
-
-```powershell
-# Verifier contexte
-kubectl config current-context
-
-# Devrait afficher quelque chose comme "kind-kind" ou le nom du cluster
-
-# Si mauvais contexte
-kubectl config get-contexts
-kubectl config use-context <bon-contexte>
-```
-
-### Pods en erreur ImagePullBackOff
-
-Cela signifie que l'image n'est pas trouvee.
-
-**Avec Docker Desktop kind**, verifier :
-
-```powershell
-# Image existe localement ?
-docker images | grep quiz-backend
-
-# Si oui, verifier imagePullPolicy dans le manifest
-kubectl describe pod <pod-name> -n quiz-app
-
-# Doit etre : imagePullPolicy: Never
-```
 
 ---
 
