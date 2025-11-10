@@ -171,8 +171,55 @@ kubectl wait --namespace ingress-nginx `
 kubectl apply -f manifests/10-ingress.yaml
 
 Étape 6 : Vérifier
-powershell# Status
+# Status
 kubectl get all -n quiz-app
 
 # Logs backend
 kubectl logs -f deployment/quiz-backend -n quiz-app
+
+
+# Problème
+# Le deployment existe mais aucun pod backend n'est créé.
+
+# 1. Voir status deployment
+kubectl get deployment -n quiz-app
+
+# 2. Détails deployment
+kubectl describe deployment quiz-backend -n quiz-app
+
+# 3. Voir replica sets
+kubectl get replicaset -n quiz-app
+
+# 4. Events récents
+kubectl get events -n quiz-app --sort-by='.lastTimestamp'
+
+# Nouveau Problème : Image busybox Ne Se Télécharge Pas
+Failed to pull image "busybox:1.36":
+failed to read expected number of bytes: unexpected EOF
+
+Solution : Pull Manuel busybox ou changer de version dans le manifest 
+# Pull busybox manuellement
+docker pull busybox:1.3
+ou 
+dans
+initContainers:
+- name: wait-for-postgres
+image: alpine:3.19 # rempalcer busybox
+
+# Redémarrer deployment
+kubectl rollout restart deployment/quiz-backend -n quiz-app
+
+# Vérifier
+kubectl get pods -n quiz-app -w
+
+# Nouvelle Erreur : Image Backend Non Trouvée
+Container image "quiz-backend:local" is not present with pull policy of Never
+Error: ErrImageNeverPull
+
+Solution : Changer imagePullPolicy
+Avec Docker Desktop kind, utilisez IfNotPresent au lieu de Never.
+containers:
+- name: quiz-backend
+  image: quiz-backend:local
+  imagePullPolicy: IfNotPresent
+

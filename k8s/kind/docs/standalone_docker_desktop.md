@@ -60,7 +60,7 @@ Ce label est normalement ajouté quand on crée le cluster avec un fichier de co
 kubectl get nodes
 
 # Ajouter le label au control-plane node
-kubectl label node <nom-du-control-plane-node> ingress-ready=true
+kubectl label node desktop-control-plane ingress-ready=true
 
 # Exemple si le node s'appelle "kind-control-plane"
 kubectl label node kind-control-plane ingress-ready=true

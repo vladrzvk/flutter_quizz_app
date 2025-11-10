@@ -48,14 +48,14 @@ spec:
       min:
         # Minimum autorise
         cpu: "50m"
-        memory: "64Mi"
+        memory: "32Mi"
       max:
         # Maximum autorise
         cpu: "2"
         memory: "2Gi"
       maxLimitRequestRatio:
         # Ratio max entre limit et request
-        cpu: "4"
+        cpu: "8"
         memory: "4"
     
     # Limites pour pods
