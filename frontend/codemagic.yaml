@@ -1,0 +1,107 @@
+# codemagic.yaml
+workflows:
+  ios-production:
+    name: iOS Production
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.vlad.geoquiz  # VOTRE Bundle ID
+
+      vars:
+        APP_STORE_CONNECT_ISSUER_ID: votre-issuer-id  # On va le récupérer
+        APP_STORE_CONNECT_KEY_IDENTIFIER: votre-key-id  # On va le récupérer
+        APP_STORE_CONNECT_PRIVATE_KEY: |  # On va le créer
+          -----BEGIN PRIVATE KEY-----
+          ...
+          -----END PRIVATE KEY-----
+        CERTIFICATE_PRIVATE_KEY: |  # Généré automatiquement par Codemagic
+          Encrypted(...)
+
+    scripts:
+      - name: Set up code signing settings on Xcode project
+        script: |
+          xcode-project use-profiles
+
+      - name: Get Flutter packages
+        script: |
+          flutter packages pub get
+
+      - name: Install pods
+        script: |
+          find . -name "Podfile" -execdir pod install \;
+
+      - name: Flutter build ipa
+        script: |
+          flutter build ipa --release \
+            --export-options-plist=/Users/builder/export_options.plist
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - flutter_drive.log
+
+    publishing:
+      email:
+        recipients:
+          - votre-email@example.com
+        notify:
+          success: true
+          failure: true
+
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: true
+        submit_to_app_store: false  # Mettre true pour production
+
+  ios-testflight:
+    name: iOS TestFlight
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.petits.quizz.de.geo
+
+      vars:
+        APP_STORE_CONNECT_ISSUER_ID: 594af543-7266-418c-9540-9c2bfce1f25e
+        APP_STORE_CONNECT_KEY_IDENTIFIER: 4S736C7SVQ
+        APP_STORE_CONNECT_PRIVATE_KEY: |
+          -----BEGIN PRIVATE KEY-----
+          MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgOlIULlGcAyc8nRiT
+          jedO/6MfaPceoj2Rqr6YTvnO+JegCgYIKoZIzj0DAQehRANCAAQqpMCbwXcAJ52B
+          H39KjIcYKfO88KMh+uZrdLgkAcTNGqnJHvN38Cy6vBICrsUtCNUT+RmykCP3TVw7
+          ooLXkJYy
+          -----END PRIVATE KEY-----
+
+    scripts:
+      - name: Set up code signing
+        script: |
+          xcode-project use-profiles
+
+      - name: Get Flutter packages
+        script: |
+          flutter packages pub get
+
+      - name: Install pods
+        script: |
+          find . -name "Podfile" -execdir pod install \;
+
+      - name: Flutter build ipa
+        script: |
+          flutter build ipa --release
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+
+    publishing:
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: true
