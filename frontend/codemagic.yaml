@@ -4,23 +4,30 @@ workflows:
     name: iOS Production
     max_build_duration: 120
     instance_type: mac_mini_m2
-
+    working_directory: frontend
     environment:
       ios_signing:
         distribution_type: app_store
+#        bundle_identifier: VLV.delegate-and-datasource
         bundle_identifier: com.vlad.geoquiz  # VOTRE Bundle ID
 
       vars:
-        APP_STORE_CONNECT_ISSUER_ID: votre-issuer-id  # On va le récupérer
-        APP_STORE_CONNECT_KEY_IDENTIFIER: votre-key-id  # On va le récupérer
-        APP_STORE_CONNECT_PRIVATE_KEY: |  # On va le créer
-          -----BEGIN PRIVATE KEY-----
-          ...
-          -----END PRIVATE KEY-----
-        CERTIFICATE_PRIVATE_KEY: |  # Généré automatiquement par Codemagic
-          Encrypted(...)
+#        APP_STORE_CONNECT_ISSUER_ID: votre-issuer-id  # On va le récupérer
+#        APP_STORE_CONNECT_KEY_IDENTIFIER: votre-key-id  # On va le récupérer
+#        APP_STORE_CONNECT_PRIVATE_KEY: |  # On va le créer
+#          -----BEGIN PRIVATE KEY-----
+#          ...
+#          -----END PRIVATE KEY-----
+#        CERTIFICATE_PRIVATE_KEY: |  # Généré automatiquement par Codemagic
+#          Encrypted(...)
 
     scripts:
+      - name: Debug - Voir structure
+        script: |
+          pwd
+          ls -la
+          find . -name "pubspec.yaml" -maxdepth 3
+
       - name: Set up code signing settings on Xcode project
         script: |
           xcode-project use-profiles
