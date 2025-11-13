@@ -28,14 +28,6 @@ workflows:
 
     scripts:
       - name: Set up code signing
-#        script: |
-      ##          keychain initialize
-      ##          app-store-connect fetch-signing-files \
-      ##            com.petits.quizz.de.geo \
-      ##            --type IOS_APP_STORE \
-      ##            --create
-      ##          keychain add-certificates
-      ##          xcode-project use-profiles
         script: |
           keychain initialize
           keychain add-certificates
@@ -57,9 +49,7 @@ workflows:
       - name: Flutter build IPA
         script: |
           BUILD_NUMBER=$(($(git rev-list --count HEAD) + 1))
-          flutter build ipa --release \
-            --build-number=$BUILD_NUMBER \
-            --export-options-plist=/Users/builder/export_options.plist
+          flutter build ipa --release --build-number=$BUILD_NUMBER
 
     artifacts:
       - build/ios/ipa/*.ipa
@@ -79,11 +69,6 @@ workflows:
         beta_groups:
           - Internal Testers
         submit_to_app_store: false
-
-#        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-#        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-#        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-#        submit_to_testflight: true
 
   ios-production:
     name: iOS Production
@@ -111,15 +96,10 @@ workflows:
           include: true
       cancel_previous_builds: true
 
-
     scripts:
       - name: Set up code signing
         script: |
           keychain initialize
-          app-store-connect fetch-signing-files \
-            com.petits.quizz.de.geo \
-            --type IOS_APP_STORE \
-            --create
           keychain add-certificates
           xcode-project use-profiles
 
@@ -143,13 +123,10 @@ workflows:
       - name: Build IPA
         script: |
           BUILD_NUMBER=$(($(git rev-list --count HEAD) + 1))
-          flutter build ipa --release \
-            --build-number=$BUILD_NUMBER \
-            --export-options-plist=/Users/builder/export_options.plist
+          flutter build ipa --release --build-number=$BUILD_NUMBER
 
     artifacts:
       - build/ios/ipa/*.ipa
-      - build/ios/archive/Runner.xcarchive
 
     publishing:
       email:
@@ -164,7 +141,7 @@ workflows:
         submit_to_testflight: true
         beta_groups:
           - Internal Testers
-        submit_to_app_store: false #pour l'instan a false
+        submit_to_app_store: false
 
 #      app_store_connect:
 #        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
