@@ -6,13 +6,21 @@ workflows:
     instance_type: mac_mini_m2
 
     environment:
-      groups:
-        - app_store_credentials
+      flutter: stable
+      xcode: latest
+      cocoapods: default
 
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.petits.quizz.de.geo
-
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: 'develop'
+          include: true
+          source: true
+      cancel_previous_builds: true
 
     scripts:
       - name: Set up code signing
@@ -63,10 +71,10 @@ workflows:
           - Internal Testers
         submit_to_app_store: false
 
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        submit_to_testflight: true
+#        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+#        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+#        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+#        submit_to_testflight: true
 
   ios-production:
     name: iOS Production
@@ -143,11 +151,18 @@ workflows:
           failure: true
 
       app_store_connect:
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        auth: integration
         submit_to_testflight: true
-        submit_to_app_store: false  # Mettre true pour production
+        beta_groups:
+          - Internal Testers
+        submit_to_app_store: false #pour l'instan a false
+
+#      app_store_connect:
+#        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+#        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+#        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+#        submit_to_testflight: true
+#        submit_to_app_store: false  # Mettre true pour production
 
 # android prod inc
 
