@@ -1,39 +1,25 @@
+# codemagic.yaml dans frontend
 workflows:
-  ios-production:
-    name: iOS Production Build
-    max_build_duration: 60
-    instance_type: mac_mini_m1
+  ios-testflight:
+    name: iOS TestFlight
+    max_build_duration: 120
+    instance_type: mac_mini_m2
 
     environment:
       groups:
         - app_store_credentials
-      vars:
-        XCODE_WORKSPACE: "Runner.xcworkspace"
-        XCODE_SCHEME: "Runner"
-        BUNDLE_ID: "com.example.quizGeoApp"
-      flutter: stable
-      xcode: latest
-      cocoapods: default
 
-    triggering:
-      events:
-        - push
-        - tag
-      branch_patterns:
-        - pattern: 'main'
-          include: true
-          source: true
-      tag_patterns:
-        - pattern: 'v*'
-          include: true
-      cancel_previous_builds: true
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.petits.quizz.de.geo
+
 
     scripts:
       - name: Set up code signing
         script: |
           keychain initialize
           app-store-connect fetch-signing-files \
-            $BUNDLE_ID \
+            com.petits.quizz.de.geo \
             --type IOS_APP_STORE \
             --create
           keychain add-certificates
@@ -41,133 +27,201 @@ workflows:
 
       - name: Get Flutter packages
         script: |
-          cd frontend
           flutter packages pub get
 
       - name: Flutter analyze
         script: |
-          cd frontend
           flutter analyze
+        ignore_failure: true
 
-      - name: Run tests
+      - name: Install CocoaPods dependencies
         script: |
-          cd frontend
-          flutter test
-        ignore_failure: false
+          find . -name "Podfile" -execdir pod install \;
 
-      - name: Increment build number
+      - name: Flutter build IPA
         script: |
-          cd frontend
           BUILD_NUMBER=$(($(git rev-list --count HEAD) + 1))
-          flutter build ios \
-            --release \
+          flutter build ipa --release \
             --build-number=$BUILD_NUMBER \
             --export-options-plist=/Users/builder/export_options.plist
 
     artifacts:
-      - frontend/build/ios/ipa/*.ipa
-      - frontend/build/ios/archive/Runner.xcarchive
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
 
     publishing:
       email:
         recipients:
-          - your-email@example.com
+          - vladislav.razyvika@gmail.com
         notify:
           success: true
           failure: true
 
       app_store_connect:
         auth: integration
-        submit_to_testflight: true
         beta_groups:
           - Internal Testers
         submit_to_app_store: false
 
-      slack:
-        channel: '#releases'
-        notify_on_build_start: true
-        notify:
-          success: true
-          failure: true
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: true
 
-  android-production:
-    name: Android Production Build
-    max_build_duration: 60
-    instance_type: linux_x2
-
+  ios-production:
+    name: iOS Production
+    max_build_duration: 90
+    instance_type: mac_mini_m2
+    working_directory: frontend
     environment:
-      groups:
-        - google_play_credentials
-      vars:
-        PACKAGE_NAME: "com.example.quiz_geo_app"
       flutter: stable
-      java: 17
+      xcode: latest
+      cocoapods: default
+
+      groups:
+        - app_store_credentials
+
+      ios_signing:
+        distribution_type: app_store
+        #        bundle_identifier: VLV.delegate-and-datasource
+        bundle_identifier: com.vlad.geoquiz  # VOTRE Bundle ID
 
     triggering:
       events:
-        - push
         - tag
-      branch_patterns:
-        - pattern: 'main'
-          include: true
-          source: true
       tag_patterns:
         - pattern: 'v*'
           include: true
       cancel_previous_builds: true
 
+
     scripts:
-      - name: Set up local properties
+      - name: Set up code signing
         script: |
-          echo "flutter.sdk=$HOME/programs/flutter" > "$CM_BUILD_DIR/frontend/android/local.properties"
+          keychain initialize
+          app-store-connect fetch-signing-files \
+            com.petits.quizz.de.geo \
+            --type IOS_APP_STORE \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
 
       - name: Get Flutter packages
         script: |
-          cd frontend
           flutter packages pub get
 
       - name: Flutter analyze
         script: |
-          cd frontend
           flutter analyze
 
       - name: Run tests
         script: |
-          cd frontend
           flutter test
         ignore_failure: false
 
-      - name: Build APK
+      - name: Install pods
         script: |
-          cd frontend
-          BUILD_NUMBER=$(($(git rev-list --count HEAD) + 1))
-          flutter build apk --release --build-number=$BUILD_NUMBER
+          find . -name "Podfile" -execdir pod install \;
 
-      - name: Build App Bundle
+      - name: Build IPA
         script: |
-          cd frontend
-          flutter build appbundle --release --build-number=$BUILD_NUMBER
+          BUILD_NUMBER=$(($(git rev-list --count HEAD) + 1))
+          flutter build ipa --release \
+            --build-number=$BUILD_NUMBER \
+            --export-options-plist=/Users/builder/export_options.plist
 
     artifacts:
-      - frontend/build/app/outputs/**/*.apk
-      - frontend/build/app/outputs/**/*.aab
+      - build/ios/ipa/*.ipa
+      - build/ios/archive/Runner.xcarchive
 
     publishing:
       email:
         recipients:
-          - your-email@example.com
+          - vladislav.razyvika@gmail.com
         notify:
           success: true
           failure: true
 
-      google_play:
-        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
-        track: internal
-        submit_as_draft: true
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: true
+        submit_to_app_store: false  # Mettre true pour production
 
-      slack:
-        channel: '#releases'
-        notify_on_build_start: true
-        notify:
-          success: true
-          failure: true
+# android prod inc
+
+
+#        android-production:
+#          name: Android Production
+#          max_build_duration: 60
+#          instance_type: linux_x2
+#          working_directory: frontend
+#
+#          environment:
+#            flutter: stable
+#            java: 17
+#
+#            groups:
+#              - google_play_credentials
+#
+#            vars:
+#              PACKAGE_NAME: "com.petits.quizz.de.geo"
+#
+#          triggering:
+#            events:
+#              - push
+#              - tag
+#            branch_patterns:
+#              - pattern: 'main'
+#                include: true
+#                source: true
+#            tag_patterns:
+#              - pattern: 'v*'
+#                include: true
+#            cancel_previous_builds: true
+#
+#          scripts:
+#            - name: Set up local properties
+#              script: |
+#                echo "flutter.sdk=$HOME/programs/flutter" > "$CM_BUILD_DIR/android/local.properties"
+#
+#            - name: Get Flutter packages
+#              script: |
+#                flutter packages pub get
+#
+#            - name: Flutter analyze
+#              script: |
+#                flutter analyze
+#
+#            - name: Run tests
+#              script: |
+#                flutter test
+#              ignore_failure: false
+#
+#            - name: Build APK
+#              script: |
+#                BUILD_NUMBER=$(($(git rev-list --count HEAD) + 1))
+#                flutter build apk --release --build-number=$BUILD_NUMBER
+#
+#            - name: Build App Bundle
+#              script: |
+#                BUILD_NUMBER=$(($(git rev-list --count HEAD) + 1))
+#                flutter build appbundle --release --build-number=$BUILD_NUMBER
+#
+#          artifacts:
+#            - build/app/outputs/**/*.apk
+#            - build/app/outputs/**/*.aab
+#
+#          publishing:
+#            email:
+#              recipients:
+#                - votre-email@example.com
+#              notify:
+#                success: true
+#                failure: true
+#
+#            google_play:
+#              credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+#              track: internal
+#              submit_as_draft: true
