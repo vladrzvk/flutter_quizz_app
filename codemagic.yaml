@@ -5,6 +5,10 @@ workflows:
     instance_type: mac_mini_m2
     working_directory: frontend
 
+    integrations:
+      app_store_connect:
+
+
     environment:
       flutter: stable
       xcode: latest
