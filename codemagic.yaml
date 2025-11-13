@@ -6,7 +6,7 @@ workflows:
     working_directory: frontend
 
     integrations:
-      app_store_connect:
+      app_store_connect: last_key_intgration_created
 
 
     environment:
