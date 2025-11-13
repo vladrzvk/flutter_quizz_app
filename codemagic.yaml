@@ -1,9 +1,12 @@
-# codemagic.yaml dans frontend
 workflows:
   ios-testflight:
     name: iOS TestFlight
     max_build_duration: 120
     instance_type: mac_mini_m2
+    working_directory: frontend
+
+    integrations:
+      app_store_connect: codemagic
 
     environment:
       flutter: stable
@@ -13,6 +16,7 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.petits.quizz.de.geo
+
     triggering:
       events:
         - push
@@ -67,6 +71,7 @@ workflows:
 
       app_store_connect:
         auth: integration
+        submit_to_testflight: true
         beta_groups:
           - Internal Testers
         submit_to_app_store: false
@@ -81,18 +86,18 @@ workflows:
     max_build_duration: 90
     instance_type: mac_mini_m2
     working_directory: frontend
+
+    integrations:
+      app_store_connect: codemagic
+
     environment:
       flutter: stable
       xcode: latest
       cocoapods: default
 
-      groups:
-        - app_store_credentials
-
       ios_signing:
         distribution_type: app_store
-        #        bundle_identifier: VLV.delegate-and-datasource
-        bundle_identifier: com.vlad.geoquiz  # VOTRE Bundle ID
+        bundle_identifier: com.petits.quizz.de.geo
 
     triggering:
       events:
