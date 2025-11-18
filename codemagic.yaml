@@ -38,16 +38,14 @@ workflows:
           app-store-connect fetch-signing-files \
             "$BUNDLE_ID" \
             --type IOS_APP_STORE \
-            --create-resource-files
+            --certificate-key=@env:CM_CERTIFICATE_PRIVATE_KEY \
+            --platform IOS
           
           # Ajouter les certificats au keychain
           keychain add-certificates
           
-          # Forcer l'utilisation du profil spécifique
-          xcode-project use-profiles \
-            --profile="profil_for_certificat_depploi" \
-            --team="$TEAM_ID" \
-            --bundle-identifier="$BUNDLE_ID"
+          # Appliquer les profils de provisioning
+          xcode-project use-profiles
 
       - name: Get Flutter packages
         script: |
@@ -62,7 +60,9 @@ workflows:
         script: |
           cd ios
           # Assurer que la version iOS minimum est 13.0
-          sed -i '' "s/platform :ios, '.*'/platform :ios, '13.0'/" Podfile
+          if [ -f "Podfile" ]; then
+            sed -i '' "s/platform :ios, '.*'/platform :ios, '13.0'/" Podfile || true
+          fi
           # Nettoyer et réinstaller les pods
           rm -rf Pods
           rm -rf Podfile.lock
