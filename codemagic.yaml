@@ -93,7 +93,7 @@ workflows:
       end
       end
       EOF
-      -
+
       - name: Install CocoaPods dependencies
         script: |
           cd ios
