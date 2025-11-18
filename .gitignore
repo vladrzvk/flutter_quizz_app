@@ -124,3 +124,4 @@ app.*.symbols
 /backend/.env
 /backend/.env.test
 /frontend/.env
+/k8s/kind/setup-kind.ps1
