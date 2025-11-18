@@ -56,16 +56,30 @@ workflows:
           flutter analyze
         ignore_failure: true
 
-      - name: Update Podfile iOS version
+      - name: Force iOS 13.0+ deployment target
         script: |
           cd ios
-          # Assurer que la version iOS minimum est 13.0
-          if [ -f "Podfile" ]; then
-            sed -i '' "s/platform :ios, '.*'/platform :ios, '13.0'/" Podfile || true
-          fi
-          # Nettoyer et réinstaller les pods
-          rm -rf Pods
-          rm -rf Podfile.lock
+          
+          # 1. Supprime toute ligne platform existante (commentée ou pas)
+          sed -i '' '/^[[:space:]]*#*[[:space:]]*platform[[:space:]]*:[[:space:]]*ios.*/d' Podfile
+          
+          # 2. Ajoute la bonne ligne juste après les commentaires Flutter
+          sed -i '' '/^# Flutter/i\
+          platform :ios, '\''13.0'\''
+          ' Podfile
+          
+          # 3. Force TOUS les pods à 13.0 minimum (évite 99 % des erreurs futures)
+          cat << 'EOF' >> Podfile
+      
+          post_install do |installer|
+          installer.pods_project.targets.each do |target|
+          flutter_additional_ios_build_settings(target)
+          target.build_configurations.each do |config|
+          config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+          end
+          end
+          end
+          EOF
 
       - name: Install CocoaPods dependencies
         script: |
