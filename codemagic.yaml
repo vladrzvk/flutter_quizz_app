@@ -33,14 +33,7 @@ workflows:
       - name: Set up code signing
         script: |
           keychain initialize
-          
-          # Récupérer les fichiers de signature depuis Apple Developer Portal
-          app-store-connect fetch-signing-files \
-            "$BUNDLE_ID" \
-            --type IOS_APP_STORE \
-            --certificate-key=@env:CM_CERTIFICATE_PRIVATE_KEY \
-            --platform IOS
-          
+             
           # Ajouter les certificats au keychain
           keychain add-certificates
           
@@ -57,15 +50,33 @@ workflows:
           xcodebuild -showBuildSettings -workspace Runner.xcworkspace -scheme Runner -configuration Release | grep -E 'DEVELOPMENT_TEAM|PROVISIONING_PROFILE|CODE_SIGN_IDENTITY'
 
 
+      - name: Get Flutter packages
+        script: |
+          flutter packages pub get
+
+      - name: Flutter clean  # New: Add this to clear caches
+        script: |
+            flutter clean
 
       - name: Get Flutter packages
         script: |
           flutter packages pub get
 
-#      - name: Flutter analyze
-#        script: |
-#          flutter analyze
-#        ignore_failure: true
+      #      - name: Flutter analyze
+      #        script: |
+      #          flutter analyze
+      #        ignore_failure: true
+
+      - name: Update iOS settings  # Uncomment and use this
+        script: |
+            cd ios
+            
+            # Forcer le team ID dans le projet (optionnel, mais utile si pas déjà set)
+            /usr/libexec/PlistBuddy -c "Set :DEVELOPMENT_TEAM 3UZ57ACSD9" Runner.xcodeproj/project.pbxproj 2>/dev/null || true
+            
+            # Mettre à jour le deployment target dans tous les fichiers
+            grep -rl "IPHONEOS_DEPLOYMENT_TARGET = .*;" . | xargs sed -i '' "s/IPHONEOS_DEPLOYMENT_TARGET = .*;/IPHONEOS_DEPLOYMENT_TARGET = 13.0;/g"
+
 
       - name: Force iOS deployment target to 13.0 (robust version)
         script: |
@@ -105,29 +116,13 @@ workflows:
           end
           EOF
 
-      - name: Update iOS settings
-        script: |
-          cd ios
-          
-          # Forcer le team ID dans le projet
-          /usr/libexec/PlistBuddy -c "Set :DEVELOPMENT_TEAM 3UZ57ACSD9" Runner.xcodeproj/project.pbxproj 2>/dev/null || true
-
-#          # Mettre à jour le deployment target
-#          grep -rl "IPHONEOS_DEPLOYMENT_TARGET = .*;" . | xargs sed -i '' "s/IPHONEOS_DEPLOYMENT_TARGET = .*;/IPHONEOS_DEPLOYMENT_TARGET = 13.0;/g"
 
 
       - name: Install CocoaPods dependencies
         script: |
           cd ios
+          rm -rf Pods Podfile.lock
           pod install --repo-update
-
-#      - name: Flutter build IPA
-#        script: |
-#          BUILD_NUMBER=$(($(git rev-list --count HEAD) + 1))
-#
-#          flutter build ipa \
-#            --release \
-#            --build-number=$BUILD_NUMBER
 
       - name: Build IPA avec configuration explicite
         script: |
