@@ -103,11 +103,10 @@ workflows:
         script: |
           BUILD_NUMBER=$(($(git rev-list --count HEAD) + 1))
           
-          # Build avec le fichier export_options.plist
           flutter build ipa \
             --release \
-            --build-number=$BUILD_NUMBER \
-            --export-options-plist=ios/export_options.plist
+            --build-number=$BUILD_NUMBER 
+
 
     artifacts:
       - build/ios/ipa/*.ipa
