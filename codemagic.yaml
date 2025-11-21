@@ -15,6 +15,10 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.petits.quizz.de.geo
+        provisioning_profile:
+          - profil_for_certificat_depploi
+        certificates:
+          - certificat_generete_p12
 
       vars:
         TEAM_ID: 3UZ57ACSD9
@@ -35,6 +39,8 @@ workflows:
           keychain initialize
           keychain add-certificates
           xcode-project use-profiles
+          echo "=== Profiles disponibles ==="
+          ls -la ~/Library/MobileDevice/Provisioning\ Profiles/ || true
 
       - name: Get Flutter packages
         script: |
@@ -50,7 +56,7 @@ workflows:
           flutter create --platform ios . --org com.petits.quizz.de.geo
           
           # Ou utiliser cette alternative qui génère aussi les fichiers
-          # flutter build ios --config-only 
+          # flutter build ios --config-only  --no-codesign
 
       - name: Configure iOS deployment target
         script: |
@@ -106,7 +112,12 @@ workflows:
               <key>uploadSymbols</key>
               <true/>
               <key>signingStyle</key>
-              <string>automatic</string>
+              <string>manual</string>
+              <key>provisioningProfiles</key>
+              <dict>
+              <key>com.petits.quizz.de.geo</key>
+              <string>Second_profil</string>  <!-- Nom de ton profil (pas UUID) -->
+              </dict>
           </dict>
           </plist>
           EOF
