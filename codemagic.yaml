@@ -15,10 +15,7 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.petits.quizz.de.geo
-        provisioning_profile:
-          - profil_for_certificat_depploi
-        certificates:
-          - certificat_generete_p12
+
 
       vars:
         TEAM_ID: 3UZ57ACSD9
@@ -116,7 +113,7 @@ workflows:
               <key>provisioningProfiles</key>
               <dict>
               <key>com.petits.quizz.de.geo</key>
-              <string>Second_profil</string>
+              <string>Second_profil</string>  <!-- Nom de ton profil (pas UUID) -->
               </dict>
           </dict>
           </plist>
