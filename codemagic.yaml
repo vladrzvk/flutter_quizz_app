@@ -50,7 +50,7 @@ workflows:
           flutter create --platform ios .
           
           # Ou utiliser cette alternative qui génère aussi les fichiers
-          # flutter build ios --config-only
+          # flutter build ios --config-only --org com.petits.quizz.de
 
       - name: Configure iOS deployment target
         script: |
