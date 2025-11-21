@@ -33,90 +33,53 @@ workflows:
       - name: Set up code signing
         script: |
           keychain initialize
-             
-          # Ajouter les certificats au keychain
           keychain add-certificates
-          
-          # Lister les profiles disponibles pour debug
-          echo "=== Profiles disponibles ==="
-          ls -la ~/Library/MobileDevice/Provisioning\ Profiles/ || true
-          
-          # Appliquer les profils de provisioning
           xcode-project use-profiles
+
+      - name: Get Flutter packages
+        script: |
+          flutter packages pub get
+
+      - name: Flutter clean
+        script: |
+          flutter clean
+
+      - name: Generate iOS platform files
+        script: |
+          # Cette commande génère les fichiers iOS nécessaires incluant le Podfile
+          flutter create --platform ios .
           
-          # Vérifier la configuration Xcode
-          echo "=== Configuration Xcode ==="
-          cd ios
-          xcodebuild -showBuildSettings -workspace Runner.xcworkspace -scheme Runner -configuration Release | grep -E 'DEVELOPMENT_TEAM|PROVISIONING_PROFILE|CODE_SIGN_IDENTITY'
+          # Ou utiliser cette alternative qui génère aussi les fichiers
+          # flutter build ios --config-only
 
-
-      - name: Get Flutter packages
-        script: |
-          flutter packages pub get
-
-      - name: Flutter clean  # New: Add this to clear caches
-        script: |
-            flutter clean
-
-      - name: Get Flutter packages
-        script: |
-          flutter packages pub get
-
-      #      - name: Flutter analyze
-      #        script: |
-      #          flutter analyze
-      #        ignore_failure: true
-
-      - name: Update iOS settings  # Uncomment and use this
-        script: |
-            cd ios
-            
-            # Forcer le team ID dans le projet (optionnel, mais utile si pas déjà set)
-            /usr/libexec/PlistBuddy -c "Set :DEVELOPMENT_TEAM 3UZ57ACSD9" Runner.xcodeproj/project.pbxproj 2>/dev/null || true
-            
-            # Mettre à jour le deployment target dans tous les fichiers
-            grep -rl "IPHONEOS_DEPLOYMENT_TARGET = .*;" . | xargs sed -i '' "s/IPHONEOS_DEPLOYMENT_TARGET = .*;/IPHONEOS_DEPLOYMENT_TARGET = 13.0;/g"
-
-
-      - name: Force iOS deployment target to 13.0 (robust version)
+      - name: Configure iOS deployment target
         script: |
           cd ios
-
-          # 1. Supprime TOUTES les lignes "platform :ios" (commentées ou pas)
-          sed -i '' '/^[[:space:]]*#*[[:space:]]*platform[[:space:]]*:[[:space:]]*ios.*/d' Podfile
-
-          # 2. Ajoute la bonne ligne juste après le commentaire "# Flutter" (ou au début si pas trouvé)
-          sed -i '' '/^# Flutter/a\
-          platform :ios, '\''13.0'\''
-          ' Podfile
-          # Si jamais la ligne "# Flutter" n'existe pas, on force au tout début
-          if ! grep -q "^platform :ios" Podfile; then
-            sed -i '' '1s/^/platform :ios, '\''13.0'\''\n/' Podfile
+          
+          # Vérifier que le Podfile existe maintenant
+          if [ -f "Podfile" ]; then
+            echo "Podfile trouvé, mise à jour de la version iOS..."
+          
+            # Forcer iOS 13.0
+            sed -i '' "s/platform :ios, .*/platform :ios, '13.0'/" Podfile
+          
+            # Si la ligne n'existe pas, l'ajouter
+            if ! grep -q "platform :ios" Podfile; then
+              sed -i '' '1i\
+              platform :ios, '\''13.0'\''
+              ' Podfile
+            fi
+          
+            # Vérifier le contenu
+            echo "=== Contenu du Podfile ==="
+            cat Podfile
+          else
+            echo "Erreur: Podfile non trouvé après génération"
+            exit 1
           fi
-
-          # 3. Supprime un éventuel ancien post_install ajouté par nous (évite les doublons)
-          sed -i '' '/^post_install do |installer|$/,/^end$/d' Podfile
-
-          # 4. Ajoute (ou remplace) le post_install à la toute fin du fichier
-          cat << 'EOF' >> Podfile
-
-          post_install do |installer|
-          installer.pods_project.targets.each do |target|
-          flutter_additional_ios_build_settings(target)
-
-          target.build_configurations.each do |config|
-          # Force le deployment target à 13.0 pour tous les pods
-          config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
-
-          # Optionnel mais recommandé sur Codemagic (évite des warnings Xcode 16+)
-          config.build_settings['ENABLE_BITCODE'] = 'NO'
-          config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64'
-          end
-          end
-          end
-          EOF
-
-
+          
+          # Mettre à jour le deployment target dans le projet Xcode
+          sed -i '' "s/IPHONEOS_DEPLOYMENT_TARGET = .*/IPHONEOS_DEPLOYMENT_TARGET = 13.0;/g" Runner.xcodeproj/project.pbxproj
 
       - name: Install CocoaPods dependencies
         script: |
@@ -124,11 +87,11 @@ workflows:
           rm -rf Pods Podfile.lock
           pod install --repo-update
 
-      - name: Build IPA avec configuration explicite
+      - name: Build IPA
         script: |
           BUILD_NUMBER=$(($(git rev-list --count HEAD) + 1))
           
-          # Créer un export_options.plist temporaire
+          # Créer le fichier ExportOptions.plist
           cat > ios/ExportOptions.plist <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -144,13 +107,11 @@ workflows:
               <true/>
               <key>signingStyle</key>
               <string>automatic</string>
-              <key>signingCertificate</key>
-              <string>Apple Distribution</string>
           </dict>
           </plist>
           EOF
           
-          # Build avec export options
+          # Build l'IPA
           flutter build ipa \
             --release \
             --build-number=$BUILD_NUMBER \
@@ -159,8 +120,6 @@ workflows:
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
-      - ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision
-      - ios/Runner.xcarchive
 
     publishing:
       email:
@@ -176,7 +135,8 @@ workflows:
         beta_groups:
           - Internal Testers
         submit_to_app_store: false
-#
+
+  #
 #    ios-production:
 #      name: iOS Production
 #      max_build_duration: 90
