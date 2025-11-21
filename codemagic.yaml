@@ -47,10 +47,10 @@ workflows:
       - name: Generate iOS platform files
         script: |
           # Cette commande génère les fichiers iOS nécessaires incluant le Podfile
-          flutter create --platform ios .
+          flutter create --platform ios . --org com.petits.quizz.de.geo
           
           # Ou utiliser cette alternative qui génère aussi les fichiers
-          # flutter build ios --config-only --org com.petits.quizz.de
+          # flutter build ios --config-only 
 
       - name: Configure iOS deployment target
         script: |
