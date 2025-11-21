@@ -116,7 +116,7 @@ workflows:
               <key>provisioningProfiles</key>
               <dict>
               <key>com.petits.quizz.de.geo</key>
-              <string>Second_profil</string>  <!-- Nom de ton profil (pas UUID) -->
+              <string>Second_profil</string>
               </dict>
           </dict>
           </plist>
