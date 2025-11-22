@@ -92,7 +92,7 @@ workflows:
 
       - name: Build IPA
         script: |
-          BUILD_NUMBER=$(($(git rev-list --count HEAD) + 1))
+          BUILD_NUMBER=$(date +%Y%m%d%H%M)
           
           # Créer le fichier ExportOptions.plist
           cat > ios/ExportOptions.plist <<EOF
