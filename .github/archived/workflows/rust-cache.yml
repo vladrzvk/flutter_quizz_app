@@ -1,0 +1,32 @@
+# .github/workflows/rust-cache.yml
+name: Rust with Cache
+
+on:
+  push:
+    paths: ['backend/**']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            backend/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Build
+        working-directory: backend/quiz_core_service
+        run: cargo build --verbose
+
+      - name: Show cache stats
+        run: du -sh ~/.cargo/registry ~/.cargo/git backend/target || true

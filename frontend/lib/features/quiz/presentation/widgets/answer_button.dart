@@ -80,17 +80,17 @@ class AnswerButton extends StatelessWidget {
                   ),
                   child: isCorrect != null
                       ? Icon(
-                    isCorrect! ? Icons.check : Icons.close,
-                    size: 16,
-                    color: Colors.white,
-                  )
+                          isCorrect! ? Icons.check : Icons.close,
+                          size: 16,
+                          color: Colors.white,
+                        )
                       : isSelected
-                      ? const Icon(
-                    Icons.circle,
-                    size: 12,
-                    color: Colors.white,
-                  )
-                      : null,
+                          ? const Icon(
+                              Icons.circle,
+                              size: 12,
+                              color: Colors.white,
+                            )
+                          : null,
                 ),
                 const SizedBox(width: 16),
 

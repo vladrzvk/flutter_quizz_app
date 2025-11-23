@@ -8,12 +8,12 @@ pub struct Question {
     pub id: Uuid,
     pub quiz_id: Uuid,
     pub ordre: i32,
-    pub category: Option<String>,        // 
+    pub category: Option<String>, //
     pub subcategory: Option<String>,
     pub type_question: String,
     pub question_data: serde_json::Value,
-    pub media_url: Option<String>,   // 🆕 URL générique (map://, https://)
-    pub target_id: Option<Uuid>,     // 🆕 Renommé (générique)
+    pub media_url: Option<String>, // 🆕 URL générique (map://, https://)
+    pub target_id: Option<Uuid>,   // 🆕 Renommé (générique)
     pub points: i32,
     pub temps_limite_sec: Option<i32>,
     pub hint: Option<String>,

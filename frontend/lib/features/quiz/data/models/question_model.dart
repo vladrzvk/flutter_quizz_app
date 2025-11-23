@@ -14,14 +14,12 @@ class QuestionModel with _$QuestionModel {
     // ✅ NOUVEAU - Catégorisation
     String? category,
     String? subcategory,
-
     @JsonKey(name: 'type_question') required String typeQuestion,
     @JsonKey(name: 'question_data') required Map<String, dynamic> questionData,
 
     // ✅ NOUVEAU - Médias
     @JsonKey(name: 'media_url') String? mediaUrl,
     @JsonKey(name: 'target_id') String? targetId,
-
     required int points,
     @JsonKey(name: 'temps_limite_sec') int? tempsLimiteSec,
     String? hint,

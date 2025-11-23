@@ -1,0 +1,128 @@
+# k8s/kind/manifests/07-postgres-statefulset.yaml
+# PostgreSQL StatefulSet avec securite renforcee
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: quiz-app
+  labels:
+    app: postgres
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  
+  template:
+    metadata:
+      labels:
+        app: postgres
+      annotations:
+        # Annotations pour monitoring/alerting
+        prometheus.io/scrape: "false"
+    
+    spec:
+      # ServiceAccount dedie
+      serviceAccountName: postgres-sa
+      automountServiceAccountToken: false
+      
+      # Security Context au niveau Pod
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999  # UID postgres dans l'image postgres
+        runAsGroup: 999
+        fsGroup: 999
+        fsGroupChangePolicy: "OnRootMismatch"
+        seccompProfile:
+          type: RuntimeDefault
+      
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          
+          ports:
+            - containerPort: 5432
+              name: postgres
+              protocol: TCP
+          
+          env:
+            - name: POSTGRES_USER
+              value: "quiz_user"
+            - name: POSTGRES_PASSWORD
+              value: "quiz"
+            - name: POSTGRES_DB
+              value: "quiz_db"
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          
+          # Security Context au niveau Conteneur
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false  # PostgreSQL a besoin d'ecrire
+            runAsNonRoot: true
+            runAsUser: 999
+            capabilities:
+              drop:
+                - ALL
+              # PostgreSQL n'a besoin d'aucune capability
+          
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+            - name: tmp
+              mountPath: /tmp
+            - name: run
+              mountPath: /var/run/postgresql
+          
+          # Resources avec limites strictes
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          
+          # Probes
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - quiz_user
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - quiz_user
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 3
+      
+      # Volumes
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: run
+          emptyDir: {}
+  
+  # VolumeClaimTemplates
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-storage
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: standard  # kind utilise standard
+        resources:
+          requests:
+            storage: 10Gi

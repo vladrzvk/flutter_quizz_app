@@ -1,0 +1,63 @@
+name: format code
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      # Backend Rust
+      - 'backend/**/*.rs'
+      - 'backend/**/Cargo.toml'       # Config Cargo
+      - '.github/workflows/format.yml' # Le workflow lui-même
+
+      # Frontend Dart
+      - 'frontend/**/*.dart'
+      - '!frontend/**/*.g.dart'       # Exclure generated
+      - '!frontend/**/*.freezed.dart' # Exclure freezed
+      - '!frontend/**/*.mocks.dart'   # Exclure mocks
+      - 'frontend/pubspec.yaml'       # Config Flutter
+jobs:
+  format-rust:
+    name: Format Rust Code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Check Rust formatting
+        working-directory: backend/quiz_core_service
+        run: cargo fmt -- --check
+
+      - name: ⚠️ Format errors found
+        if: failure()
+        run: |
+          echo "❌ Code not formatted!"
+          echo "Run locally: cd backend/quiz_core_service && cargo fmt"
+          exit 1
+
+  format-flutter:
+    name: Format Flutter Code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+
+      - name: Check Flutter formatting
+        working-directory: frontend
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: ⚠️ Format errors found
+        if: failure()
+        run: |
+          echo "❌ Code not formatted!"
+          echo "Run locally: cd frontend && dart format ."
+          exit 1

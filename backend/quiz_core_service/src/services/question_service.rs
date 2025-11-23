@@ -2,12 +2,12 @@ use shared::AppError;
 use sqlx::PgPool;
 use uuid::Uuid;
 
+use crate::dto::{QuestionWithReponses, ReponseDto};
 use crate::{
     dto::question_dto::{CreateQuestionRequest, UpdateQuestionRequest},
     models::Question,
     repositories::question_repo::QuestionRepository,
 };
-use crate::dto::{QuestionWithReponses, ReponseDto};
 
 pub struct QuestionService;
 
@@ -16,7 +16,8 @@ impl QuestionService {
         pool: &PgPool,
         quiz_id: Uuid,
     ) -> Result<Vec<QuestionWithReponses>, AppError> {
-        let questions_with_reponses = QuestionRepository::find_by_quiz_id_with_reponses(pool, quiz_id).await?;
+        let questions_with_reponses =
+            QuestionRepository::find_by_quiz_id_with_reponses(pool, quiz_id).await?;
 
         // Convertir en DTO
         let result = questions_with_reponses
@@ -46,7 +47,7 @@ impl QuestionService {
                         .map(|r| ReponseDto {
                             id: r.id,
                             valeur: r.valeur,
-                            is_correct: None,  // ❌ NE PAS exposer is_correct au client !
+                            is_correct: None, // ❌ NE PAS exposer is_correct au client !
                             ordre: r.ordre,
                         })
                         .collect(),
@@ -76,14 +77,14 @@ impl QuestionService {
             &request.question_data,
             request.media_url.as_deref(),
             request.target_id,
-            request.category.as_deref(),        // ✅ NOUVEAU
-            request.subcategory.as_deref(),     // ✅ NOUVEAU
+            request.category.as_deref(),    // ✅ NOUVEAU
+            request.subcategory.as_deref(), // ✅ NOUVEAU
             request.points,
             request.temps_limite_sec,
             request.hint.as_deref(),
             request.explanation.as_deref(),
         )
-            .await?;
+        .await?;
 
         Ok(question)
     }
@@ -101,15 +102,15 @@ impl QuestionService {
             &request.question_data,
             request.media_url.as_deref(),
             request.target_id,
-            request.category.as_deref(),        // ✅ NOUVEAU
-            request.subcategory.as_deref(),     // ✅ NOUVEAU
+            request.category.as_deref(),    // ✅ NOUVEAU
+            request.subcategory.as_deref(), // ✅ NOUVEAU
             request.points,
             request.temps_limite_sec,
             request.hint.as_deref(),
             request.explanation.as_deref(),
         )
-            .await?
-            .ok_or_else(|| AppError::NotFound(format!("Question with id {} not found", id)))?;
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("Question with id {} not found", id)))?;
 
         Ok(question)
     }

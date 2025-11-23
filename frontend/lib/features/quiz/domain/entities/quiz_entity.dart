@@ -47,28 +47,40 @@ class QuizEntity extends Equatable {
   // Helpers
   String get difficultyEmoji {
     switch (niveauDifficulte) {
-      case 'facile': return '🟢';
-      case 'moyen': return '🟡';
-      case 'difficile': return '🔴';
-      default: return '⚪';
+      case 'facile':
+        return '🟢';
+      case 'moyen':
+        return '🟡';
+      case 'difficile':
+        return '🔴';
+      default:
+        return '⚪';
     }
   }
 
   String get domainEmoji {
     switch (domain) {
-      case 'geography': return '🌍';
-      case 'code_route': return '🚗';
-      default: return '📚';
+      case 'geography':
+        return '🌍';
+      case 'code_route':
+        return '🚗';
+      default:
+        return '📚';
     }
   }
 
   String get modeLabel {
     switch (mode) {
-      case 'decouverte': return 'Découverte';
-      case 'entrainement': return 'Entraînement';
-      case 'examen': return 'Examen';
-      case 'competition': return 'Compétition';
-      default: return mode;
+      case 'decouverte':
+        return 'Découverte';
+      case 'entrainement':
+        return 'Entraînement';
+      case 'examen':
+        return 'Examen';
+      case 'competition':
+        return 'Compétition';
+      default:
+        return mode;
     }
   }
 }

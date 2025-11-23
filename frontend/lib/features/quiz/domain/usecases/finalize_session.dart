@@ -12,7 +12,8 @@ class FinalizeSession implements UseCase<SessionEntity, FinalizeSessionParams> {
   FinalizeSession(this.repository);
 
   @override
-  Future<Either<Failure, SessionEntity>> call(FinalizeSessionParams params) async {
+  Future<Either<Failure, SessionEntity>> call(
+      FinalizeSessionParams params) async {
     return await repository.finalizeSession(params.sessionId);
   }
 }

@@ -1,3 +1,6 @@
+# k8s/kind/manifests/08-backend-service.yaml
+# Service ClusterIP pour exposer le backend en interne
+
 apiVersion: v1
 kind: Service
 metadata:
@@ -7,10 +10,11 @@ metadata:
     app: quiz-backend
 spec:
   type: ClusterIP
+  selector:
+    app: quiz-backend
   ports:
     - port: 8080
       targetPort: 8080
       protocol: TCP
       name: http
-  selector:
-    app: quiz-backend
+  sessionAffinity: None

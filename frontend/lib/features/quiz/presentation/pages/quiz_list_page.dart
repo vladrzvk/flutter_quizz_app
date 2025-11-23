@@ -24,7 +24,9 @@ class QuizListPage extends StatelessWidget {
                 return IconButton(
                   icon: const Icon(Icons.refresh),
                   onPressed: () {
-                    context.read<QuizListBloc>().add(const RefreshQuizListEvent());
+                    context
+                        .read<QuizListBloc>()
+                        .add(const RefreshQuizListEvent());
                   },
                 );
               },
@@ -44,7 +46,8 @@ class QuizListPage extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                    const Icon(Icons.error_outline,
+                        size: 64, color: Colors.red),
                     const SizedBox(height: 16),
                     Text(
                       'Erreur',
@@ -59,7 +62,9 @@ class QuizListPage extends StatelessWidget {
                     const SizedBox(height: 24),
                     ElevatedButton.icon(
                       onPressed: () {
-                        context.read<QuizListBloc>().add(const LoadQuizListEvent());
+                        context
+                            .read<QuizListBloc>()
+                            .add(const LoadQuizListEvent());
                       },
                       icon: const Icon(Icons.refresh),
                       label: const Text('Réessayer'),
@@ -74,7 +79,8 @@ class QuizListPage extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.inbox_outlined, size: 64, color: Colors.grey),
+                    const Icon(Icons.inbox_outlined,
+                        size: 64, color: Colors.grey),
                     const SizedBox(height: 16),
                     Text(
                       'Aucun quiz disponible',
@@ -88,7 +94,9 @@ class QuizListPage extends StatelessWidget {
             if (state is QuizListLoaded) {
               return RefreshIndicator(
                 onRefresh: () async {
-                  context.read<QuizListBloc>().add(const RefreshQuizListEvent());
+                  context
+                      .read<QuizListBloc>()
+                      .add(const RefreshQuizListEvent());
                 },
                 child: ListView.builder(
                   padding: const EdgeInsets.all(16),

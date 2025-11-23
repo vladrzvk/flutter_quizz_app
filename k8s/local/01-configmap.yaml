@@ -1,8 +1,13 @@
+# k8s/local/01-configmap.yaml
+# Configuration non-sensible pour le backend
+
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: quiz-config
   namespace: quiz-app
+  labels:
+    app: quiz-backend
 data:
   RUST_LOG: "info,quiz_core_service=debug"
   ENVIRONMENT: "local"

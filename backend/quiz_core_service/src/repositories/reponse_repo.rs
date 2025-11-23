@@ -1,18 +1,21 @@
+use crate::models::Reponse;
 use sqlx::PgPool;
 use uuid::Uuid;
-use crate::models::Reponse;
 
 pub struct ReponseRepository;
 
 impl ReponseRepository {
     /// Récupérer toutes les réponses d'une question
-    pub async fn find_by_question_id(pool: &PgPool, question_id: Uuid) -> Result<Vec<Reponse>, sqlx::Error> {
+    pub async fn find_by_question_id(
+        pool: &PgPool,
+        question_id: Uuid,
+    ) -> Result<Vec<Reponse>, sqlx::Error> {
         sqlx::query_as::<_, Reponse>(
-            "SELECT * FROM reponses WHERE question_id = $1 ORDER BY ordre ASC"
+            "SELECT * FROM reponses WHERE question_id = $1 ORDER BY ordre ASC",
         )
-            .bind(question_id)
-            .fetch_all(pool)
-            .await
+        .bind(question_id)
+        .fetch_all(pool)
+        .await
     }
 
     /// Récupérer une réponse par ID
@@ -25,9 +28,7 @@ impl ReponseRepository {
 
     /// Vérifier si une réponse est correcte par ID
     pub async fn is_correct(pool: &PgPool, id: Uuid) -> Result<bool, sqlx::Error> {
-        let is_correct: bool = sqlx::query_scalar(
-            "SELECT is_correct FROM reponses WHERE id = $1"
-        )
+        let is_correct: bool = sqlx::query_scalar("SELECT is_correct FROM reponses WHERE id = $1")
             .bind(id)
             .fetch_optional(pool)
             .await?
@@ -93,16 +94,16 @@ impl ReponseRepository {
             SET valeur = $2, region_id = $3, is_correct = $4, ordre = $5, tolerance_meters = $6
             WHERE id = $1
             RETURNING *
-            "#
+            "#,
         )
-            .bind(id)
-            .bind(valeur)
-            .bind(region_id)
-            .bind(is_correct)
-            .bind(ordre)
-            .bind(tolerance_meters)
-            .fetch_optional(pool)
-            .await
+        .bind(id)
+        .bind(valeur)
+        .bind(region_id)
+        .bind(is_correct)
+        .bind(ordre)
+        .bind(tolerance_meters)
+        .fetch_optional(pool)
+        .await
     }
 
     /// Supprimer une réponse
@@ -116,9 +117,7 @@ impl ReponseRepository {
 
     /// Compter le nombre de réponses pour une question
     pub async fn count_by_question(pool: &PgPool, question_id: Uuid) -> Result<i64, sqlx::Error> {
-        sqlx::query_scalar(
-            "SELECT COUNT(*) FROM reponses WHERE question_id = $1"
-        )
+        sqlx::query_scalar("SELECT COUNT(*) FROM reponses WHERE question_id = $1")
             .bind(question_id)
             .fetch_one(pool)
             .await

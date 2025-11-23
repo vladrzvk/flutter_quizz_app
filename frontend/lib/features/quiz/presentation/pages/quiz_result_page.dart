@@ -40,7 +40,8 @@ class QuizResultPage extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                    const Icon(Icons.error_outline,
+                        size: 64, color: Colors.red),
                     const SizedBox(height: 16),
                     Text(state.message),
                     const SizedBox(height: 24),
@@ -80,8 +81,8 @@ class QuizResultPage extends StatelessWidget {
                 Text(
                   session.resultMessage,
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
               ],
             ),
@@ -97,23 +98,23 @@ class QuizResultPage extends StatelessWidget {
                 Text(
                   '${session.score}',
                   style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: _getScoreColor(session.calculatedPourcentage),
-                  ),
+                        fontWeight: FontWeight.bold,
+                        color: _getScoreColor(session.calculatedPourcentage),
+                      ),
                 ),
                 Text(
                   'sur ${session.scoreMax} points',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Colors.grey[600],
-                  ),
+                        color: Colors.grey[600],
+                      ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   '${session.calculatedPourcentage.toStringAsFixed(1)}%',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: _getScoreColor(session.calculatedPourcentage),
-                  ),
+                        fontWeight: FontWeight.bold,
+                        color: _getScoreColor(session.calculatedPourcentage),
+                      ),
                 ),
               ],
             ),
@@ -220,12 +221,12 @@ class QuizResultPage extends StatelessWidget {
   }
 
   Widget _buildStatRow(
-      BuildContext context, {
-        required IconData icon,
-        required String label,
-        required String value,
-        Color? color,
-      }) {
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String value,
+    Color? color,
+  }) {
     return Row(
       children: [
         Icon(icon, color: color ?? Colors.grey[600]),
@@ -242,9 +243,9 @@ class QuizResultPage extends StatelessWidget {
         Text(
           value,
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
         ),
       ],
     );

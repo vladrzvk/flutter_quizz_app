@@ -30,8 +30,8 @@ class QuizCard extends StatelessWidget {
                     child: Text(
                       quiz.titre,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                            fontWeight: FontWeight.bold,
+                          ),
                     ),
                   ),
                   Icon(
@@ -48,8 +48,8 @@ class QuizCard extends StatelessWidget {
                 Text(
                   quiz.description!,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey[700],
-                  ),
+                        color: Colors.grey[700],
+                      ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -82,7 +82,7 @@ class QuizCard extends StatelessWidget {
                   _buildBadge(
                     context,
                     icon: Icons.timer,
-                    label:  '~${(quiz.nbQuestions * 15) ~/ 60} min',
+                    label: '~${(quiz.nbQuestions * 15) ~/ 60} min',
                     color: Colors.orange,
                   ),
 
@@ -103,11 +103,11 @@ class QuizCard extends StatelessWidget {
   }
 
   Widget _buildBadge(
-      BuildContext context, {
-        required IconData icon,
-        required String label,
-        required Color color,
-      }) {
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(

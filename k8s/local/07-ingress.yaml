@@ -1,8 +1,13 @@
+# k8s/local/07-ingress.yaml
+# Ingress NGINX pour exposer l'application sur localhost
+
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: quiz-app-ingress
   namespace: quiz-app
+  labels:
+    app: quiz-backend
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/ssl-redirect: "false"

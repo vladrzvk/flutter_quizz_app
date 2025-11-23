@@ -5,13 +5,14 @@ use axum::{
 use shared::AppError;
 use uuid::Uuid;
 
-use crate::{dto::CreateQuestionRequest, models::Question, services::QuestionService, AppState};
 use crate::dto::{QuestionWithReponses, UpdateQuestionRequest};
+use crate::{AppState, dto::CreateQuestionRequest, models::Question, services::QuestionService};
 
 pub async fn get_questions_by_quiz_handler(
     State(app_state): State<AppState>,
     Path(quiz_id): Path<Uuid>,
-) -> Result<Json<Vec<QuestionWithReponses>>, AppError> {  // ✅ MODIFIER le type
+) -> Result<Json<Vec<QuestionWithReponses>>, AppError> {
+    // ✅ MODIFIER le type
     let questions = QuestionService::get_by_quiz_id(&app_state.pool, quiz_id).await?;
     Ok(Json(questions))
 }

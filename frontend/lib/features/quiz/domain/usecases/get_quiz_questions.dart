@@ -6,13 +6,15 @@ import '../repositories/quiz_repository.dart';
 import 'usecase.dart';
 
 /// Use Case : Récupérer les questions d'un quiz
-class GetQuizQuestions implements UseCase<List<QuestionEntity>, GetQuizQuestionsParams> {
+class GetQuizQuestions
+    implements UseCase<List<QuestionEntity>, GetQuizQuestionsParams> {
   final QuizRepository repository;
 
   GetQuizQuestions(this.repository);
 
   @override
-  Future<Either<Failure, List<QuestionEntity>>> call(GetQuizQuestionsParams params) async {
+  Future<Either<Failure, List<QuestionEntity>>> call(
+      GetQuizQuestionsParams params) async {
     return await repository.getQuizQuestions(params.quizId);
   }
 }

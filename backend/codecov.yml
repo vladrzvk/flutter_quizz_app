@@ -1,0 +1,23 @@
+# codecov.yml
+coverage:
+  status:
+    project:
+      default:
+        target: 85%           # ✅ Objectif 85%
+        threshold: 1%         # Tolérance -1%
+
+    patch:
+      default:
+        target: 80%           # Code ajouté: 80%
+        threshold: 5%
+
+  ignore:
+    - "**/*_test.rs"
+    - "**/tests/**"
+    - "**/*.g.dart"          # Flutter generated
+    - "**/*.freezed.dart"
+
+comment:
+  layout: "reach,diff,flags,tree"
+  behavior: default
+  require_changes: false

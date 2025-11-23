@@ -14,9 +14,8 @@ extension UserAnswerModelMapper on UserAnswerModel {
       isCorrect: isCorrect,
       pointsObtenus: pointsObtenus,
       tempsReponseSec: tempsReponseSec,
-      createdAt: createdAt != null
-          ? DateTime.parse(createdAt!)
-          : DateTime.now(),
+      createdAt:
+          createdAt != null ? DateTime.parse(createdAt!) : DateTime.now(),
     );
   }
 }

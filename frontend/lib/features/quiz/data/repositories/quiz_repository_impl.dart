@@ -56,8 +56,8 @@ class QuizRepositoryImpl implements QuizRepository {
 
   @override
   Future<Either<Failure, List<QuestionEntity>>> getQuizQuestions(
-      String quizId,
-      ) async {
+    String quizId,
+  ) async {
     try {
       final questionModels = await remoteDataSource.getQuizQuestions(quizId);
       final questionEntities = questionModels.toEntities();
@@ -100,7 +100,7 @@ class QuizRepositoryImpl implements QuizRepository {
   Future<Either<Failure, AnswerEntity>> submitAnswer({
     required String sessionId,
     required String questionId,
-    String? reponseId,           // ✅ NOUVEAU - ID pour QCM/Vrai-Faux
+    String? reponseId, // ✅ NOUVEAU - ID pour QCM/Vrai-Faux
     String? valeurSaisie,
     required int timeSpentSeconds,
   }) async {
@@ -108,7 +108,7 @@ class QuizRepositoryImpl implements QuizRepository {
       // Créer le model de soumission
       final submission = AnswerSubmission(
         questionId: questionId,
-        reponseId: reponseId,          // ✅ Pour QCM/Vrai-Faux
+        reponseId: reponseId, // ✅ Pour QCM/Vrai-Faux
         valeurSaisie: valeurSaisie,
         tempsReponseSec: timeSpentSeconds,
       );
@@ -137,8 +137,8 @@ class QuizRepositoryImpl implements QuizRepository {
 
   @override
   Future<Either<Failure, SessionEntity>> finalizeSession(
-      String sessionId,
-      ) async {
+    String sessionId,
+  ) async {
     try {
       final sessionModel = await remoteDataSource.finalizeSession(sessionId);
       final sessionEntity = sessionModel.toEntity();
@@ -171,4 +171,3 @@ class QuizRepositoryImpl implements QuizRepository {
     }
   }
 }
-

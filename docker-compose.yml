@@ -54,31 +54,29 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  # Backend Quiz (DEV avec hot reload)
-  backend:
-    build:
-      context: .
-      dockerfile: docker/backend-dev.Dockerfile  # ✅ Dockerfile DEV
-    container_name: quiz-backend
-    environment:
-      DATABASE_URL: postgresql://quiz_user:dev_password@postgres-quiz:5432/quiz_db
-      RUST_LOG: debug
-      HOST: 0.0.0.0
-      PORT: 8080
-      JWT_SECRET: dev-secret-key
-    ports:
-      - "8080:8080"
-    volumes:
-      # ✅ Monter tout le backend
-      - ./backend:/app
-      - cargo_cache:/usr/local/cargo/registry
-      - cargo_git:/usr/local/cargo/git
-    depends_on:
-      postgres-quiz:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+#
+#  backend:
+#    build:
+#      context: .
+#      dockerfile: docker/backend.Dockerfile  # ✅ Dockerfile DEV
+#    container_name: quiz-backend
+#    environment:
+#      DATABASE_URL: postgresql://quiz_user:dev_password@postgres-quiz:5432/quiz_db
+#      RUST_LOG: debug
+#      HOST: 0.0.0.0
+#      PORT: 8080
+#      JWT_SECRET: dev-secret-key
+#    ports:
+#      - "8080:8080"
+#    volumes:
+#      - ./backend:/app
+#      - cargo_cache:/usr/local/cargo/registry
+#      - cargo_git:/usr/local/cargo/git
+#    depends_on:
+#      postgres-quiz:
+#        condition: service_healthy
+#      redis:
+#        condition: service_healthy
 
 volumes:
   postgres-quiz-data:

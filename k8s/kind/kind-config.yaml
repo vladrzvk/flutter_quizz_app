@@ -1,0 +1,42 @@
+# k8s/kind/kind-config.yaml
+# Configuration kind pour cluster multi-nodes proche production
+
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: quiz-cluster
+
+# Nodes du cluster
+nodes:
+  # Control plane
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 80
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 443
+        protocol: TCP
+    extraMounts:
+      # Mount pour audit logs
+      - hostPath: ./audit-logs
+        containerPath: /var/log/kubernetes/audit
+  
+  # Worker nodes
+  - role: worker
+  - role: worker
+
+# Configuration réseau
+networking:
+  disableDefaultCNI: false
+  podSubnet: "10.244.0.0/16"
+  serviceSubnet: "10.96.0.0/12"
+
+# Feature gates
+featureGates:
+  PodSecurity: true

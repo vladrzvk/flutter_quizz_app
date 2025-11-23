@@ -6,10 +6,10 @@ use shared::AppError;
 use uuid::Uuid;
 
 use crate::{
+    AppState,
     dto::{StartSessionRequest, SubmitAnswerRequest},
-    models::{SessionQuiz, ReponseUtilisateur},
+    models::{ReponseUtilisateur, SessionQuiz},
     services::SessionService,
-    AppState
 };
 
 // ✅ INCHANGÉ
@@ -37,13 +37,13 @@ pub async fn submit_answer_handler(
     Path(session_id): Path<Uuid>,
     Json(payload): Json<SubmitAnswerRequest>,
 ) -> Result<Json<ReponseUtilisateur>, AppError> {
-    
     let reponse = SessionService::submit_answer(
         &app_state.pool,
-        &app_state.plugin_registry,  // ✅ AJOUTÉ
+        &app_state.plugin_registry, // ✅ AJOUTÉ
         session_id,
-        payload
-    ).await?;
+        payload,
+    )
+    .await?;
     Ok(Json(reponse))
 }
 

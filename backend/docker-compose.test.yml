@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+#  postgres-map:
+#    image: postgis/postgis:15-3.3
+#    environment:
+#      POSTGRES_DB: map_db
+#      POSTGRES_USER: map_user
+#      POSTGRES_PASSWORD: dev_password
+#      LANG: C.UTF-8
+#      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C.UTF-8"
+#      PGCLIENTENCODING: UTF8
+#    ports:
+#      - "5434:5432"
+#    volumes:
+#      - postgres-map-data:/var/lib/postgresql/data
+#
+#  postgres-quiz:
+#    image: postgres:15
+#    environment:
+#      POSTGRES_DB: quiz_db
+#      POSTGRES_USER: quiz_user
+#      POSTGRES_PASSWORD: dev_password
+#      LANG: C.UTF-8
+#      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C.UTF-8"
+#      PGCLIENTENCODING: "UTF8"
+#    ports:
+#      - "5432:5432"
+#    volumes:
+#      - postgres-quiz-data:/var/lib/postgresql/data
+#
+  postgres-test: # ✅ NOUVELLE BDD pour tests
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: quiz_user
+      POSTGRES_PASSWORD: quiz_test
+      POSTGRES_DB: quiz_db_test
+      LANG: C.UTF-8
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C.UTF-8"
+      PGCLIENTENCODING: "UTF8"
+    ports:
+      - "5433:5432"  # ✅ Port différent
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    tmpfs:
+      - /var/lib/postgresql/data  # ✅ En mémoire = plus rapide
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quiz_user -d quiz_db_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-network
+
+#  redis:
+#    image: redis:7-alpine
+#    ports:
+#      - "6379:6379"
+#    volumes:
+#      - redis-data:/data
+
+volumes:
+#  postgres-map-data:
+#  postgres-quiz-data:
+  postgres_test_data:
+    driver: local
+#  redis-data:
+
+networks:
+  test-network:
+    driver: bridge
+
+# ========================================
+# 📝 UTILISATION
+# ========================================
+#
+# Démarrer la DB test :
+#   docker-compose -f docker-compose.test.yml up -d
+#
+# Voir les logs :
+#   docker-compose -f docker-compose.test.yml logs -f
+#
+# Arrêter la DB :
+#   docker-compose -f docker-compose.test.yml down
+#
+# Nettoyer complètement (ATTENTION: supprime les données) :
+#   docker-compose -f docker-compose.test.yml down -v
+#
+# Se connecter à la DB :
+#   docker exec -it quiz-postgres-test psql -U quiz_user -d quiz_db_test
+#
+# Connection string :
+#   postgresql://quiz_user:quiz_test@localhost:5433/quiz_db_test

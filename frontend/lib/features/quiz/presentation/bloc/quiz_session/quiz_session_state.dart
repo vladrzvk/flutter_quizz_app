@@ -42,17 +42,17 @@ class QuizSessionInProgress extends QuizSessionState {
   int get totalScore {
     return submittedAnswers.fold<int>(
       0,
-          (sum, answer) => sum + answer.pointsObtenus,
+      (sum, answer) => sum + answer.pointsObtenus,
     );
   }
 
   @override
   List<Object> get props => [
-    session,
-    questions,
-    currentQuestionIndex,
-    submittedAnswers,
-  ];
+        session,
+        questions,
+        currentQuestionIndex,
+        submittedAnswers,
+      ];
 
   QuizSessionInProgress copyWith({
     SessionEntity? session,
@@ -88,18 +88,18 @@ class QuizAnswerSubmitted extends QuizSessionState {
   int get totalScore {
     return submittedAnswers.fold<int>(
       0,
-          (sum, answer) => sum + answer.pointsObtenus,
+      (sum, answer) => sum + answer.pointsObtenus,
     );
   }
 
   @override
   List<Object> get props => [
-    session,
-    questions,
-    currentQuestionIndex,
-    submittedAnswers,
-    lastAnswer,
-  ];
+        session,
+        questions,
+        currentQuestionIndex,
+        submittedAnswers,
+        lastAnswer,
+      ];
 }
 
 /// Session terminée, afficher les résultats

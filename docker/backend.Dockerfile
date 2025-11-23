@@ -24,12 +24,8 @@ COPY backend/shared/Cargo.toml ./shared/
 
 # Créer des fichiers src fictifs pour le cache des dépendances
 RUN mkdir -p quiz_core_service/src && \
-    mkdir -p shared/src && \
-    echo "fn main() {}" > quiz_core_service/src/main.rs && \
-    echo "// dummy lib" > shared/src/lib.rs
+    mkdir -p shared/src
 
-# Build des dépendances (cache)
-RUN cargo build --release
 
 # Maintenant copier le vrai code source
 COPY backend/quiz_core_service ./quiz_core_service
@@ -39,19 +35,28 @@ COPY backend/shared ./shared
 RUN cargo build --release
 
 # ============================================
-# Stage 2: Runtime (Distroless)
+# Stage 2: Runtime (CORRIGÉ)
 # ============================================
-FROM gcr.io/distroless/cc-debian12
+FROM debian:bookworm-slim
+
+# ✅ INSTALLER LES DÉPENDANCES RUNTIME
+RUN apt-get update && apt-get install -y \
+    libpq5 \
+    libssl3 \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copier le binaire (pas dans un sous-dossier !)
+# Copier le binaire
 COPY --from=builder /app/target/release/quiz_core_service /app/quiz_core_service
+
 # Copier les migrations
 COPY --from=builder /app/quiz_core_service/migrations /app/migrations
 
 # User non-root
-USER nonroot:nonroot
+RUN useradd -u 65532 -m appuser
+USER appuser
 
 EXPOSE 8080
 

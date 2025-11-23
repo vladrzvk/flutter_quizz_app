@@ -46,6 +46,7 @@ linked_*.ds
 unlinked.ds
 unlinked_spec.ds
 
+
 # Android related
 **/android/**/gradle-wrapper.jar
 .gradle/
@@ -117,3 +118,10 @@ app.*.symbols
 !**/ios/**/default.perspectivev3
 !/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
 !/dev/ci/**/Gemfile.lock
+
+/exercice/*
+.actrc/
+/backend/.env
+/backend/.env.test
+/frontend/.env
+/k8s/kind/setup-kind.ps1

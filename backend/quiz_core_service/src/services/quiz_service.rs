@@ -3,9 +3,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::{
-    dto::quiz_dto::CreateQuizRequest,
-    models::Quiz,
-    repositories::quiz_repo::QuizRepository,
+    dto::quiz_dto::CreateQuizRequest, models::Quiz, repositories::quiz_repo::QuizRepository,
 };
 
 pub struct QuizService;
@@ -27,16 +25,16 @@ impl QuizService {
     pub async fn create(pool: &PgPool, request: CreateQuizRequest) -> Result<Quiz, AppError> {
         let quiz = QuizRepository::create(
             pool,
-            &request.domain,              // ✅ NOUVEAU
-            &request.titre,               // ✅
+            &request.domain,                // ✅ NOUVEAU
+            &request.titre,                 // ✅
             request.description.as_deref(), // ✅
-            &request.niveau_difficulte,   // ✅
-            &request.version_app,         // ✅
-            &request.scope,               // ✅ CHANGÉ (avant: region_scope)
-            &request.mode,                // ✅
-            request.nb_questions,         // ✅
+            &request.niveau_difficulte,     // ✅
+            &request.version_app,           // ✅
+            &request.scope,                 // ✅ CHANGÉ (avant: region_scope)
+            &request.mode,                  // ✅
+            request.nb_questions,           // ✅
         )
-            .await?;
+        .await?;
 
         Ok(quiz)
     }

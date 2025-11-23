@@ -32,9 +32,9 @@ class QuizSessionBloc extends Bloc<QuizSessionEvent, QuizSessionState> {
 
   /// Démarre une session de quiz
   Future<void> _onStartSession(
-      StartQuizSessionEvent event,
-      Emitter<QuizSessionState> emit,
-      ) async {
+    StartQuizSessionEvent event,
+    Emitter<QuizSessionState> emit,
+  ) async {
     emit(const QuizSessionLoading());
 
     // 1. Récupérer les questions du quiz
@@ -43,8 +43,8 @@ class QuizSessionBloc extends Bloc<QuizSessionEvent, QuizSessionState> {
     );
 
     await questionsResult.fold(
-          (failure) async => emit(QuizSessionError(failure.message)),
-          (questions) async {
+      (failure) async => emit(QuizSessionError(failure.message)),
+      (questions) async {
         if (questions.isEmpty) {
           emit(const QuizSessionError('Ce quiz ne contient aucune question'));
           return;
@@ -59,8 +59,8 @@ class QuizSessionBloc extends Bloc<QuizSessionEvent, QuizSessionState> {
         );
 
         sessionResult.fold(
-              (failure) => emit(QuizSessionError(failure.message)),
-              (session) => emit(
+          (failure) => emit(QuizSessionError(failure.message)),
+          (session) => emit(
             QuizSessionInProgress(
               session: session,
               questions: questions,
@@ -75,13 +75,14 @@ class QuizSessionBloc extends Bloc<QuizSessionEvent, QuizSessionState> {
 
   /// Soumet une réponse
   Future<void> _onSubmitAnswer(
-      SubmitAnswerEvent event,
-      Emitter<QuizSessionState> emit,
-      ) async {
+    SubmitAnswerEvent event,
+    Emitter<QuizSessionState> emit,
+  ) async {
     if (state is! QuizSessionInProgress) return;
 
     final currentState = state as QuizSessionInProgress;
-    final currentQuestion = currentState.questions[currentState.currentQuestionIndex];
+    final currentQuestion =
+        currentState.questions[currentState.currentQuestionIndex];
 
     // ✅ Déterminer si c'est QCM/Vrai-Faux ou Saisie
     String? reponseId;
@@ -107,10 +108,10 @@ class QuizSessionBloc extends Bloc<QuizSessionEvent, QuizSessionState> {
     );
 
     result.fold(
-          (failure) => emit(QuizSessionError(failure.message)),
-          (answer) {
-        final updatedAnswers = List<AnswerEntity>.from(currentState.submittedAnswers)
-          ..add(answer);
+      (failure) => emit(QuizSessionError(failure.message)),
+      (answer) {
+        final updatedAnswers =
+            List<AnswerEntity>.from(currentState.submittedAnswers)..add(answer);
 
         // Afficher le feedback de la réponse
         emit(QuizAnswerSubmitted(
@@ -126,15 +127,16 @@ class QuizSessionBloc extends Bloc<QuizSessionEvent, QuizSessionState> {
 
   /// Passe à la question suivante
   void _onNextQuestion(
-      NextQuestionEvent event,
-      Emitter<QuizSessionState> emit,
-      ) {
+    NextQuestionEvent event,
+    Emitter<QuizSessionState> emit,
+  ) {
     if (state is! QuizAnswerSubmitted) return;
 
     final currentState = state as QuizAnswerSubmitted;
 
     // Si c'était la dernière question, finaliser automatiquement
-    if (currentState.currentQuestionIndex >= currentState.questions.length - 1) {
+    if (currentState.currentQuestionIndex >=
+        currentState.questions.length - 1) {
       add(const FinalizeQuizSessionEvent());
     } else {
       // Sinon, passer à la question suivante
@@ -149,9 +151,9 @@ class QuizSessionBloc extends Bloc<QuizSessionEvent, QuizSessionState> {
 
   /// Finalise la session
   Future<void> _onFinalizeSession(
-      FinalizeQuizSessionEvent event,
-      Emitter<QuizSessionState> emit,
-      ) async {
+    FinalizeQuizSessionEvent event,
+    Emitter<QuizSessionState> emit,
+  ) async {
     // Récupérer l'état actuel avec les bonnes propriétés
     String sessionId;
     List<QuestionEntity> questions;
@@ -179,8 +181,8 @@ class QuizSessionBloc extends Bloc<QuizSessionEvent, QuizSessionState> {
     );
 
     result.fold(
-          (failure) => emit(QuizSessionError(failure.message)),
-          (finalSession) => emit(
+      (failure) => emit(QuizSessionError(failure.message)),
+      (finalSession) => emit(
         QuizSessionCompleted(
           session: finalSession,
           questions: questions,
@@ -192,9 +194,9 @@ class QuizSessionBloc extends Bloc<QuizSessionEvent, QuizSessionState> {
 
   /// Charge une session existante
   Future<void> _onLoadSession(
-      LoadSessionEvent event,
-      Emitter<QuizSessionState> emit,
-      ) async {
+    LoadSessionEvent event,
+    Emitter<QuizSessionState> emit,
+  ) async {
     emit(const QuizSessionLoading());
 
     final result = await getSession(
@@ -202,8 +204,8 @@ class QuizSessionBloc extends Bloc<QuizSessionEvent, QuizSessionState> {
     );
 
     result.fold(
-          (failure) => emit(QuizSessionError(failure.message)),
-          (session) {
+      (failure) => emit(QuizSessionError(failure.message)),
+      (session) {
         // TODO: Charger aussi les questions et réponses
         emit(const QuizSessionError('Fonctionnalité pas encore implémentée'));
       },

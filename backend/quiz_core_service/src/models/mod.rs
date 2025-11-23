@@ -1,9 +1,9 @@
-mod quiz;
 mod question;
+mod quiz;
 mod reponse;
 mod session;
 
-pub use quiz::Quiz;
 pub use question::Question;
+pub use quiz::Quiz;
 pub use reponse::Reponse;
-pub use session::{SessionQuiz, ReponseUtilisateur};
+pub use session::{ReponseUtilisateur, SessionQuiz};

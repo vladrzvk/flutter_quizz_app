@@ -1,0 +1,80 @@
+# k8s/kind/manifests/01-rbac.yaml
+# RBAC : ServiceAccounts, Roles et RoleBindings
+
+---
+# ServiceAccount pour le backend
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: quiz-backend-sa
+  namespace: quiz-app
+  labels:
+    app: quiz-backend
+automountServiceAccountToken: false  # Desactive montage auto du token
+
+---
+# ServiceAccount pour PostgreSQL
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: postgres-sa
+  namespace: quiz-app
+  labels:
+    app: postgres
+automountServiceAccountToken: false
+
+---
+# Role pour le backend (permissions minimales)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: quiz-backend-role
+  namespace: quiz-app
+rules:
+  # Le backend n'a besoin d'aucune permission K8s
+  # Si besoin futur, ajouter ici
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list"]
+    # Lecture seule des ConfigMaps si necessaire
+
+---
+# RoleBinding pour le backend
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: quiz-backend-rolebinding
+  namespace: quiz-app
+subjects:
+  - kind: ServiceAccount
+    name: quiz-backend-sa
+    namespace: quiz-app
+roleRef:
+  kind: Role
+  name: quiz-backend-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# Role pour PostgreSQL (aucune permission necessaire)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: postgres-role
+  namespace: quiz-app
+rules: []  # Aucune permission
+
+---
+# RoleBinding pour PostgreSQL
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: postgres-rolebinding
+  namespace: quiz-app
+subjects:
+  - kind: ServiceAccount
+    name: postgres-sa
+    namespace: quiz-app
+roleRef:
+  kind: Role
+  name: postgres-role
+  apiGroup: rbac.authorization.k8s.io

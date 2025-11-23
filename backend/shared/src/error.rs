@@ -1,7 +1,7 @@
 use axum::{
+    Json,
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json,
 };
 use serde_json::json;
 
@@ -37,9 +37,7 @@ impl IntoResponse for AppError {
             AppError::InternalServerError(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error")
             }
-            AppError::PluginNotFound => {
-                (StatusCode::INTERNAL_SERVER_ERROR, "Plugin not found")
-            }
+            AppError::PluginNotFound => (StatusCode::INTERNAL_SERVER_ERROR, "Plugin not found"),
         };
 
         let body = Json(json!({

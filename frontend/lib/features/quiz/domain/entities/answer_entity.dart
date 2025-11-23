@@ -26,16 +26,16 @@ class AnswerEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-    id,
-    sessionId,
-    questionId,
-    reponseId,
-    valeurSaisie,
-    isCorrect,
-    pointsObtenus,
-    tempsReponseSec,
-    createdAt,
-  ];
+        id,
+        sessionId,
+        questionId,
+        reponseId,
+        valeurSaisie,
+        isCorrect,
+        pointsObtenus,
+        tempsReponseSec,
+        createdAt,
+      ];
 
   // 🎯 MÉTHODES MÉTIER
 

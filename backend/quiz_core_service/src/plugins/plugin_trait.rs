@@ -2,10 +2,7 @@ use async_trait::async_trait;
 use shared::AppError;
 use sqlx::PgPool;
 
-use crate::{
-    dto::session_dto::SubmitAnswerRequest,
-    models::{Question},
-};
+use crate::{dto::session_dto::SubmitAnswerRequest, models::Question};
 
 /// Résultat de validation d'une réponse
 #[derive(Debug, Clone)]
@@ -150,7 +147,6 @@ pub trait QuizPlugin: Send + Sync {
         question: &Question,
         answer: &SubmitAnswerRequest,
     ) -> Result<ValidationResult, AppError> {
-
         // ✅ AJOUTER : Gérer le timeout (pas de réponse)
         let reponse_id = match &answer.reponse_id {
             Some(id) => id,
@@ -172,11 +168,11 @@ pub trait QuizPlugin: Send + Sync {
         let is_correct: bool = sqlx::query_scalar(
             "SELECT is_correct FROM reponses WHERE id = $1 AND question_id = $2",
         )
-            .bind(reponse_id)
-            .bind(question.id)
-            .fetch_optional(pool)
-            .await?
-            .ok_or_else(|| AppError::NotFound("Réponse non trouvée".to_string()))?;
+        .bind(reponse_id)
+        .bind(question.id)
+        .fetch_optional(pool)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Réponse non trouvée".to_string()))?;
 
         if is_correct {
             Ok(ValidationResult::correct("Bonne réponse !")
@@ -207,14 +203,14 @@ pub trait QuizPlugin: Send + Sync {
             }
         };
         // Reste identique
-        let is_correct:bool = sqlx::query_scalar(
+        let is_correct: bool = sqlx::query_scalar(
             "SELECT is_correct FROM reponses WHERE id = $1 AND question_id = $2",
         )
-            .bind(reponse_id)
-            .bind(&question.id)
-            .fetch_optional(pool)
-            .await?
-            .ok_or_else(|| AppError::NotFound("Réponse non trouvée".to_string()))?;
+        .bind(reponse_id)
+        .bind(&question.id)
+        .fetch_optional(pool)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Réponse non trouvée".to_string()))?;
 
         if is_correct {
             Ok(ValidationResult::correct("Bonne réponse !")
@@ -248,10 +244,10 @@ pub trait QuizPlugin: Send + Sync {
             )
             "#,
         )
-            .bind(question.id)
-            .bind(valeur_saisie)
-            .fetch_one(pool)
-            .await?;
+        .bind(question.id)
+        .bind(valeur_saisie)
+        .fetch_one(pool)
+        .await?;
 
         if is_correct {
             Ok(ValidationResult::correct("Bonne réponse !"))

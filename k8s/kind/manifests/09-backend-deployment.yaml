@@ -1,0 +1,197 @@
+# k8s/kind/manifests/09-backend-deployment.yaml
+# Backend Deployment avec securite renforcee
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: quiz-backend
+  namespace: quiz-app
+  labels:
+    app: quiz-backend
+    version: v1
+spec:
+  replicas: 2
+  
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0  # Zero downtime
+  
+  selector:
+    matchLabels:
+      app: quiz-backend
+  
+  template:
+    metadata:
+      labels:
+        app: quiz-backend
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    
+    spec:
+      # ServiceAccount dedie
+      serviceAccountName: quiz-backend-sa
+      automountServiceAccountToken: false
+      
+      # Security Context au niveau Pod
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532  # UID non-root
+        runAsGroup: 65532
+        fsGroup: 65532
+        fsGroupChangePolicy: "OnRootMismatch"
+        seccompProfile:
+          type: RuntimeDefault
+      
+      # Init Container pour attendre PostgreSQL
+#      initContainers:
+#        - name: wait-for-postgres
+#          image: alpine:3.19
+#          command:
+#            - sh
+#            - -c
+#            - |
+#              echo "Waiting for PostgreSQL..."
+#              until nc -z postgres 5432; do
+#                echo "PostgreSQL unavailable - sleeping"
+#                sleep 2
+#              done
+#              echo "PostgreSQL ready"
+#          securityContext:
+#            allowPrivilegeEscalation: false
+#            readOnlyRootFilesystem: true
+#            runAsNonRoot: true
+#            runAsUser: 65532
+#            capabilities:
+#              drop:
+#                - ALL
+#          resources:
+#            requests:
+#              memory: "64Mi"
+#              cpu: "50m"
+#            limits:
+#              memory: "128Mi"
+#              cpu: "100m"
+      
+      containers:
+#        - name: quiz-backend
+#          # Image locale chargee dans kind
+#          image: quiz-backend:local
+#          imagePullPolicy: IfNotPresent
+#
+        - name: quiz-backend
+          image: findajobchomeur/quiz-backend:latest  # Votre image Docker Hub
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          
+          # Variables d'environnement
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: quiz-secrets
+                  key: DATABASE_URL
+            
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: quiz-secrets
+                  key: JWT_SECRET
+            
+            - name: RUST_LOG
+              valueFrom:
+                configMapKeyRef:
+                  name: quiz-config
+                  key: RUST_LOG
+            
+            - name: HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: quiz-config
+                  key: HOST
+            
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: quiz-config
+                  key: PORT
+            
+            - name: ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: quiz-config
+                  key: ENVIRONMENT
+          
+          # Security Context au niveau Conteneur
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+            capabilities:
+              drop:
+                - ALL
+          
+          # Resources
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "400m"
+          
+          # Liveness Probe
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          
+          # Readiness Probe
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 3
+          
+          # Volume Mounts
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: cache
+              mountPath: /app/cache
+      
+      # Volumes
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: cache
+          emptyDir: {}
+
+---
+# Pod Disruption Budget pour garantir disponibilite
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: quiz-backend-pdb
+  namespace: quiz-app
+spec:
+  minAvailable: 1  # Minimum 1 pod disponible pendant maintenance
+  selector:
+    matchLabels:
+      app: quiz-backend

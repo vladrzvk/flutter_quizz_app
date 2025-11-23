@@ -1,3 +1,6 @@
+# k8s/kind/manifests/06-postgres-service.yaml
+# Service headless pour PostgreSQL StatefulSet
+
 apiVersion: v1
 kind: Service
 metadata:
@@ -7,6 +10,7 @@ metadata:
     app: postgres
 spec:
   type: ClusterIP
+  clusterIP: None  # Headless service for StatefulSet
   ports:
     - port: 5432
       targetPort: 5432
@@ -14,4 +18,3 @@ spec:
       name: postgres
   selector:
     app: postgres
-  clusterIP: None  # Headless service for StatefulSet

@@ -1,24 +1,20 @@
 mod config;
 mod dto;
 mod handlers;
+mod json_utf8;
 mod models;
-mod plugins;        // 🆕 Plugin system
+mod plugins; // 🆕 Plugin system
 mod repositories;
 mod routes;
 mod services;
-mod json_utf8;
 
-
+use axum::http::header;
 use config::Config;
-use plugins::{PluginRegistry, GeographyPlugin}; // 🆕
+use plugins::{GeographyPlugin, PluginRegistry}; // 🆕
 use sqlx::PgPool;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use axum::http::header;
-use tower_http::{
-    cors::CorsLayer,
-    set_header::SetResponseHeaderLayer,
-};
+use tower_http::{cors::CorsLayer, set_header::SetResponseHeaderLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 /// 🆕 App State avec Plugin Registry
@@ -52,7 +48,7 @@ async fn main() -> anyhow::Result<()> {
     let mut plugin_registry = PluginRegistry::new();
     // 🆕 Enregistrer Geography Plugin
     plugin_registry.register(Arc::new(GeographyPlugin));
-    
+
     tracing::info!(
         "✅ Plugin registry initialized with {} plugins",
         plugin_registry.count()
@@ -65,10 +61,12 @@ async fn main() -> anyhow::Result<()> {
     };
 
     // Routes avec CORS
-    let app = routes::create_router(app_state).layer(CorsLayer::permissive()).layer(SetResponseHeaderLayer::if_not_present(
-        header::CONTENT_TYPE,
-        header::HeaderValue::from_static("application/json; charset=utf-8"),
-    ));
+    let app = routes::create_router(app_state)
+        .layer(CorsLayer::permissive())
+        .layer(SetResponseHeaderLayer::if_not_present(
+            header::CONTENT_TYPE,
+            header::HeaderValue::from_static("application/json; charset=utf-8"),
+        ));
 
     // Server : en localhost direct
     // let addr = SocketAddr::from(([127, 0, 0, 1], config.server_port));
@@ -77,18 +75,23 @@ async fn main() -> anyhow::Result<()> {
 
     let addr = format!("{}:{}", config.server_host, config.server_port);
 
-
-
     tracing::info!("🚀 Quiz Core Service listening on {}", addr);
-    tracing::info!("📍 API: http://{}:{}/api/v1", config.server_host, config.server_port);
-    tracing::info!("📍 Health: http://{}:{}/health",config.server_host, config.server_port);
+    tracing::info!(
+        "📍 API: http://{}:{}/api/v1",
+        config.server_host,
+        config.server_port
+    );
+    tracing::info!(
+        "📍 Health: http://{}:{}/health",
+        config.server_host,
+        config.server_port
+    );
 
     // let listener = tokio::net::TcpListener::bind(addr).await?;
     let listener = tokio::net::TcpListener::bind(&addr)
         .await
         .expect("Failed to bind");
     axum::serve(listener, app).await?;
-
 
     Ok(())
 }
