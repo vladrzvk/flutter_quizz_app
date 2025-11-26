@@ -1,8 +1,27 @@
 [workspace]
-members = ["quiz_core_service", "shared" ]
 resolver = "2"
+members = [
+    "shared",
+    "quiz_core_service",
+#    "auth_service",
+    "api_gateway",
+
+#    "subscription_service",
+#    "ads_service",
+#    "api_gateway"
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Quiz Geo Team"]
+license = "MIT"
 
 [workspace.dependencies]
+# ============================================
+# DÉPENDANCES EXISTANTES (versions utilisateur)
+# ============================================
+
 # Async runtime
 tokio = { version = "1.35", features = ["full"] }
 
@@ -10,7 +29,10 @@ tokio = { version = "1.35", features = ["full"] }
 axum = { version = "0.7", features = ["macros"] }
 tower = "0.4"
 tower-http = { version = "0.5", features = ["cors", "trace"] }
+
+# Cache (déjà présent dans ton projet)
 redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
+
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -34,3 +56,20 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Configuration
 dotenvy = "0.15"
+
+# ============================================
+# NOUVELLES DÉPENDANCES (pour auth et autres services)
+# ============================================
+
+# Authentication & Security
+jsonwebtoken = "9"
+argon2 = "0.5"
+
+# HTTP client (pour OAuth et inter-service calls)
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+
+# Validation
+validator = { version = "0.18", features = ["derive"] }
+
+# Utilities
+tokio-util = "0.7"

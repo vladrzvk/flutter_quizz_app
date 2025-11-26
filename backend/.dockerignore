@@ -1,0 +1,43 @@
+# Build artifacts
+**/target/
+**/.cargo/
+**/Cargo.lock
+
+# IDE
+**/.idea/
+**/.vscode/
+**/.vs/
+
+# Git
+**/.git/
+**/.gitignore
+
+# OS
+**/.DS_Store
+**/Thumbs.db
+
+# Logs
+**/*.log
+
+# Env files (sécurité)
+**/.env
+**/.env.*
+
+# Docker files
+**/Dockerfile
+**/docker-compose*.yml
+
+# Frontend (si tu build depuis racine)
+frontend/node_modules/
+frontend/build/
+frontend/.dart_tool/
+
+# Tests
+**/tests/
+backend/tests/
+
+# Documentation
+**/README.md
+**/docs/
+exercice/
+

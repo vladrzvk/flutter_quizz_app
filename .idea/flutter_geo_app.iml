@@ -8,6 +8,8 @@
       <sourceFolder url="file://$MODULE_DIR$/backend/geography_quizz/map_service/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/backend/geography_quizz/quiz_service/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/backend/quiz_core_service/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/backend/api_gateway/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/backend/auth_service/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/backend/target" />
       <excludeFolder url="file://$MODULE_DIR$/frontend/.dart_tool" />
       <excludeFolder url="file://$MODULE_DIR$/frontend/.idea" />
