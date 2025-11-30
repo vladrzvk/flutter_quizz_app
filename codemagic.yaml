@@ -138,7 +138,7 @@
 #          failure: true
 #
 #      app_store_connect:
-#        auth: integration
+#        auth_service: integration
 #        submit_to_testflight: true
 #        beta_groups:
 #          - Internal Testers
@@ -211,7 +211,7 @@
 ##            failure: true
 ##
 ##        app_store_connect:
-##          auth: integration
+##          auth_service: integration
 ##          submit_to_testflight: true
 ##          beta_groups:
 ##            - Internal Testers
