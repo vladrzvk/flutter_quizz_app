@@ -5,7 +5,6 @@ members = [
     "quiz_core_service",
     "auth_service",
     "api_gateway",
-
 #    "subscription_service",
 #    "ads_service",
 #    "api_gateway"
