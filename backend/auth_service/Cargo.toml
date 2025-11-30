@@ -1,0 +1,60 @@
+[package]
+name = "auth_service"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Web Framework
+axum = { version = "0.7", features = ["macros"] }
+tokio = { version = "1", features = ["full"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace", "limit"] }
+
+# Database
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# UUID
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
+# Date/Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Security - Authentication
+bcrypt = "0.15"
+jsonwebtoken = "9"
+argon2 = "0.5"  # Alternative à bcrypt, plus résistant
+
+# Security - Validation
+validator = { version = "0.18", features = ["derive"] }
+ammonia = "4.0"  # HTML sanitization
+
+# Security - Rate Limiting
+governor = "0.6"
+
+# Security - CAPTCHA
+hcaptcha = "2.4"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Error Handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Environment
+dotenvy = "0.15"
+
+# Utilities
+async-trait = "0.1"
+fingerprint = "0.0.3"  # Device fingerprinting
+
+# Shared (local)
+shared = { path = "../shared" }
+
+[dev-dependencies]
+tokio-test = "0.4"

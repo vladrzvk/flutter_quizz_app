@@ -3,7 +3,7 @@ resolver = "2"
 members = [
     "shared",
     "quiz_core_service",
-#    "auth_service",
+    "auth_service",
     "api_gateway",
 
 #    "subscription_service",

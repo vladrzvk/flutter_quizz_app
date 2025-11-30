@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="SqlDialectMappings">
+    <file url="file://$PROJECT_DIR$/docker/init-scripts/01-auth-db.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/docker/init-scripts/02-subscription-db.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/docker/init-scripts/04-ads-db.sql" dialect="GenericSQL" />
+  </component>
+</project>
