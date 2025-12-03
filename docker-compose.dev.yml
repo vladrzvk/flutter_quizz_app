@@ -96,47 +96,47 @@ services:
   # BACKEND SERVICES
   # ============================================
 
-#  auth-service:
-#    build:
-#      context: .
-#      dockerfile: docker/auth.Dockerfile
-#      args:
-#        SERVICE_NAME: auth_service
-#    container_name: auth_service-service
-#    environment:
-#      # Service config
-#      PORT: 3001
-#      RUST_LOG: info
-#
-#      # Database
-#      DATABASE_URL: postgres://auth_user:${AUTH_DB_PASSWORD:-auth_secret_dev}@postgres-auth_service:5432/auth_db
-#
-#      # JWT
-#      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_in_production}
-#      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev_refresh_secret_change_in_production}
-#      JWT_EXPIRATION_HOURS: 168  # 7 days
-#      JWT_REFRESH_EXPIRATION_HOURS: 720  # 30 days
-#
-#      # OAuth (dev values - replace in .env)
-#      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-#      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-#      APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-}
-#      APPLE_TEAM_ID: ${APPLE_TEAM_ID:-}
-#
-#    ports:
-#      - "3001:3001"
-#    depends_on:
-#      postgres-auth:
-#        condition: service_healthy
-#    networks:
-#      - backend-network
-#    healthcheck:
-#      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
-#      interval: 30s
-#      timeout: 10s
-#      retries: 3
-#      start_period: 40s
-#    restart: unless-stopped
+  auth-service:
+    build:
+      context: .
+      dockerfile: backend/auth_service/Dockerfile
+      args:
+        SERVICE_NAME: auth_service
+    container_name: auth_service-service
+    environment:
+      # Service config
+      PORT: 3001
+      RUST_LOG: info
+
+      # Database
+      DATABASE_URL: postgres://auth_user:${AUTH_DB_PASSWORD:-auth_secret_dev}@postgres-auth_service:5432/auth_db
+
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_in_production}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev_refresh_secret_change_in_production}
+      JWT_EXPIRATION_HOURS: 168  # 7 days
+      JWT_REFRESH_EXPIRATION_HOURS: 720  # 30 days
+
+      # OAuth (dev values - replace in .env)
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-}
+      APPLE_TEAM_ID: ${APPLE_TEAM_ID:-}
+
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
+    networks:
+      - backend-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
 
 #  subscription-service:
 #    build:

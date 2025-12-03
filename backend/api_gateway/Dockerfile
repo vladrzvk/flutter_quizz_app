@@ -9,6 +9,7 @@ RUN cargo install cargo-chef
 # Copier le workspace complet
 COPY backend/Cargo.toml backend/Cargo.lock ./
 COPY backend/api_gateway ./api_gateway
+COPY backend/auth_service ./auth_service
 COPY backend/shared ./shared
 COPY backend/quiz_core_service ./quiz_core_service
 
@@ -54,6 +55,7 @@ COPY --from=cacher /usr/local/cargo /usr/local/cargo
 # Copier le workspace
 COPY backend/Cargo.toml backend/Cargo.lock ./
 COPY backend/api_gateway ./api_gateway
+COPY backend/auth_service ./auth_service
 COPY backend/shared ./shared
 COPY backend/quiz_core_service ./quiz_core_service
 
