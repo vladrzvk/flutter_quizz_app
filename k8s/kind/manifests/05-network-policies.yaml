@@ -102,3 +102,200 @@ spec:
       ports:
         - protocol: TCP
           port: 443
+
+
+#**Modifications** :
+#  - Autoriser Gateway → Quiz Service (port 8080 avec mTLS)
+#  - Autoriser Gateway → Auth Service (port 3001 avec mTLS)
+#  - Bloquer tout autre trafic inter-services
+
+
+# k8s/kind/manifests/05-network-policies.yaml
+# Network Policies durcies pour mTLS
+# Permet uniquement le trafic authentifié entre services
+
+#apiVersion: networking.k8s.io/v1
+#kind: NetworkPolicy
+#metadata:
+#  name: deny-all-ingress
+#  namespace: quiz-app
+#  annotations:
+#    description: "Politique par défaut: bloquer tout trafic entrant"
+#spec:
+#  podSelector: {}
+#  policyTypes:
+#    - Ingress
+#  # Pas de règle ingress = tout bloqué par défaut
+#
+#---
+#apiVersion: networking.k8s.io/v1
+#kind: NetworkPolicy
+#metadata:
+#  name: allow-gateway-ingress
+#  namespace: quiz-app
+#  annotations:
+#    description: "Autoriser trafic depuis Ingress NGINX vers Gateway"
+#spec:
+#  podSelector:
+#    matchLabels:
+#      service: gateway
+#  policyTypes:
+#    - Ingress
+#  ingress:
+#    # Autoriser depuis NGINX Ingress Controller
+#    - from:
+#        - namespaceSelector:
+#            matchLabels:
+#              name: ingress-nginx
+#      ports:
+#        - protocol: TCP
+#          port: 8000  # Port Gateway
+#
+#---
+#apiVersion: networking.k8s.io/v1
+#kind: NetworkPolicy
+#metadata:
+#  name: allow-gateway-to-quiz-service
+#  namespace: quiz-app
+#  annotations:
+#    description: "Autoriser Gateway vers Quiz Service avec mTLS (port 8080)"
+#spec:
+#  podSelector:
+#    matchLabels:
+#      service: quiz-service
+#  policyTypes:
+#    - Ingress
+#  ingress:
+#    - from:
+#        - podSelector:
+#            matchLabels:
+#              service: gateway
+#      ports:
+#        - protocol: TCP
+#          port: 8080  # Quiz Service avec mTLS
+#
+#---
+#apiVersion: networking.k8s.io/v1
+#kind: NetworkPolicy
+#metadata:
+#  name: allow-gateway-to-auth-service
+#  namespace: quiz-app
+#  annotations:
+#    description: "Autoriser Gateway vers Auth Service avec mTLS (port 3001)"
+#spec:
+#  podSelector:
+#    matchLabels:
+#      service: auth-service
+#  policyTypes:
+#    - Ingress
+#  ingress:
+#    - from:
+#        - podSelector:
+#            matchLabels:
+#              service: gateway
+#      ports:
+#        - protocol: TCP
+#          port: 3001  # Auth Service avec mTLS
+#
+#---
+#apiVersion: networking.k8s.io/v1
+#kind: NetworkPolicy
+#metadata:
+#  name: allow-postgres-access
+#  namespace: quiz-app
+#  annotations:
+#    description: "Autoriser accès PostgreSQL depuis services backend"
+#spec:
+#  podSelector:
+#    matchLabels:
+#      app: postgres
+#  policyTypes:
+#    - Ingress
+#  ingress:
+#    - from:
+#        - podSelector:
+#            matchLabels:
+#              app: quiz-backend
+#      ports:
+#        - protocol: TCP
+#          port: 5432
+#
+#---
+#apiVersion: networking.k8s.io/v1
+#kind: NetworkPolicy
+#metadata:
+#  name: allow-dns
+#  namespace: quiz-app
+#  annotations:
+#    description: "Autoriser résolution DNS pour tous les pods"
+#spec:
+#  podSelector: {}
+#  policyTypes:
+#    - Egress
+#  egress:
+#    # DNS vers kube-dns/CoreDNS
+#    - to:
+#        - namespaceSelector:
+#            matchLabels:
+#              name: kube-system
+#      ports:
+#        - protocol: UDP
+#          port: 53
+#        - protocol: TCP
+#          port: 53
+#
+#---
+#apiVersion: networking.k8s.io/v1
+#kind: NetworkPolicy
+#metadata:
+#  name: allow-backend-egress
+#  namespace: quiz-app
+#  annotations:
+#    description: "Autoriser trafic sortant depuis services backend"
+#spec:
+#  podSelector:
+#    matchLabels:
+#      app: quiz-backend
+#  policyTypes:
+#    - Egress
+#  egress:
+#    # DNS
+#    - to:
+#        - namespaceSelector:
+#            matchLabels:
+#              name: kube-system
+#      ports:
+#        - protocol: UDP
+#          port: 53
+#        - protocol: TCP
+#          port: 53
+#
+#    # PostgreSQL
+#    - to:
+#        - podSelector:
+#            matchLabels:
+#              app: postgres
+#      ports:
+#        - protocol: TCP
+#          port: 5432
+#
+#    # Inter-services mTLS
+#    - to:
+#        - podSelector:
+#            matchLabels:
+#              app: quiz-backend
+#      ports:
+#        - protocol: TCP
+#          port: 8080  # Quiz Service
+#        - protocol: TCP
+#          port: 3001  # Auth Service
+#
+#---
+# SÉCURITÉ STRICTE:
+# - Par défaut: tout bloqué
+# - Gateway: accessible uniquement depuis Ingress NGINX
+# - Quiz Service: accessible uniquement depuis Gateway (mTLS port 8080)
+# - Auth Service: accessible uniquement depuis Gateway (mTLS port 3001)
+# - PostgreSQL: accessible uniquement depuis backend services
+# - Pas de communication directe Quiz ↔ Auth (doit passer par Gateway)
+# - DNS autorisé pour résolution noms services

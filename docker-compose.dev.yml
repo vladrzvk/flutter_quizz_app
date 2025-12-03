@@ -25,51 +25,6 @@ services:
       retries: 5
     restart: unless-stopped
 
-#  postgres-subscription:
-#    image: postgres:16-alpine
-#    container_name: postgres-subscription_service
-#    environment:
-#      POSTGRES_DB: subscription_db
-#      POSTGRES_USER: subscription_user
-#      POSTGRES_PASSWORD: ${SUBSCRIPTION_DB_PASSWORD:-subscription_secret_dev}
-#      POSTGRES_INITDB_ARGS: "-E UTF8"
-#    ports:
-#      - "5433:5432"
-#    volumes:
-#      - postgres-subscription_service-data:/var/lib/postgresql/data
-#      - ./docker/init-scripts/02-subscription-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-#    networks:
-#      - backend-network
-#    healthcheck:
-#      test: ["CMD-SHELL", "pg_isready -U subscription_user -d subscription_db"]
-#      interval: 10s
-#      timeout: 5s
-#      retries: 5
-#    restart: unless-stopped
-#
-
-#  postgres-ads:
-#    image: postgres:16-alpine
-#    container_name: postgres-ads_service
-#    environment:
-#      POSTGRES_DB: ads_db
-#      POSTGRES_USER: ads_user
-#      POSTGRES_PASSWORD: ${ADS_DB_PASSWORD:-ads_secret_dev}
-#      POSTGRES_INITDB_ARGS: "-E UTF8"
-#    ports:
-#      - "5435:5432"
-#    volumes:
-#      - postgres-ads_service-data:/var/lib/postgresql/data
-#      - ./docker/init-scripts/04-ads-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-#    networks:
-#      - backend-network
-#    healthcheck:
-#      test: ["CMD-SHELL", "pg_isready -U ads_user -d ads_db"]
-#      interval: 10s
-#      timeout: 5s
-#      retries: 5
-#    restart: unless-stopped
-
   postgres-quiz:
     image: postgres:16-alpine
     container_name: postgres-quiz
@@ -93,122 +48,8 @@ services:
     restart: unless-stopped
 
   # ============================================
-  # BACKEND SERVICES
+  # BACKEND SERVICES (avec mTLS)
   # ============================================
-
-#  auth-service:
-#    build:
-#      context: .
-#      dockerfile: docker/auth.Dockerfile
-#      args:
-#        SERVICE_NAME: auth_service
-#    container_name: auth_service-service
-#    environment:
-#      # Service config
-#      PORT: 3001
-#      RUST_LOG: info
-#
-#      # Database
-#      DATABASE_URL: postgres://auth_user:${AUTH_DB_PASSWORD:-auth_secret_dev}@postgres-auth_service:5432/auth_db
-#
-#      # JWT
-#      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_in_production}
-#      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev_refresh_secret_change_in_production}
-#      JWT_EXPIRATION_HOURS: 168  # 7 days
-#      JWT_REFRESH_EXPIRATION_HOURS: 720  # 30 days
-#
-#      # OAuth (dev values - replace in .env)
-#      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-#      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-#      APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-}
-#      APPLE_TEAM_ID: ${APPLE_TEAM_ID:-}
-#
-#    ports:
-#      - "3001:3001"
-#    depends_on:
-#      postgres-auth:
-#        condition: service_healthy
-#    networks:
-#      - backend-network
-#    healthcheck:
-#      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
-#      interval: 30s
-#      timeout: 10s
-#      retries: 3
-#      start_period: 40s
-#    restart: unless-stopped
-
-#  subscription-service:
-#    build:
-#      context: .
-#      dockerfile: docker/subscription.Dockerfile
-#      args:
-#        SERVICE_NAME: subscription_service
-#    container_name: subscription_service-service
-#    environment:
-#      PORT: 3002
-#      RUST_LOG: info
-#      DATABASE_URL: postgres://subscription_user:${SUBSCRIPTION_DB_PASSWORD:-subscription_secret_dev}@postgres-subscription_service:5432/subscription_db
-#      AUTH_SERVICE_URL: http://auth-service:3001
-#
-#      # Apple IAP
-#      APPLE_SHARED_SECRET: ${APPLE_SHARED_SECRET:-}
-#      APPLE_BUNDLE_ID: ${APPLE_BUNDLE_ID:-}
-#
-#      # Google IAP
-#      GOOGLE_SERVICE_ACCOUNT_JSON: ${GOOGLE_SERVICE_ACCOUNT_JSON:-}
-#
-#    ports:
-#      - "3002:3002"
-#    depends_on:
-#      postgres-subscription:
-#        condition: service_healthy
-#      auth-service:
-#        condition: service_healthy
-#    networks:
-#      - backend-network
-#    healthcheck:
-#      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
-#      interval: 30s
-#      timeout: 10s
-#      retries: 3
-#      start_period: 40s
-#    restart: unless-stopped
-#
-#  ads-service:
-#    build:
-#      context: .
-#      dockerfile: docker/ads.Dockerfile
-#      args:
-#        SERVICE_NAME: ads_service
-#    container_name: ads_service-service
-#    environment:
-#      PORT: 3004
-#      RUST_LOG: info
-#      DATABASE_URL: postgres://ads_user:${ADS_DB_PASSWORD:-ads_secret_dev}@postgres-ads_service:5432/ads_db
-#      AUTH_SERVICE_URL: http://auth-service:3001
-#      SUBSCRIPTION_SERVICE_URL: http://subscription-service:3002
-#
-#      # AdMob
-#      ADMOB_APP_ID: ${ADMOB_APP_ID:-}
-#      ADMOB_PUBLISHER_ID: ${ADMOB_PUBLISHER_ID:-}
-#
-#    ports:
-#      - "3004:3004"
-#    depends_on:
-#      postgres-ads:
-#        condition: service_healthy
-#      auth-service:
-#        condition: service_healthy
-#    networks:
-#      - backend-network
-#    healthcheck:
-#      test: ["CMD", "curl", "-f", "http://localhost:3004/health"]
-#      interval: 30s
-#      timeout: 10s
-#      retries: 3
-#      start_period: 40s
-#    restart: unless-stopped
 
   quiz-core-service:
     build:
@@ -216,31 +57,54 @@ services:
       dockerfile: docker/backend_chef.Dockerfile
     container_name: quiz-core-service
     environment:
+      # Service config
       PORT: 8080
-      RUST_LOG: info
+      HOST: 0.0.0.0
+      RUST_LOG: debug  # Augmenté pour voir logs mTLS
+
+      # Database
       DATABASE_URL: postgres://quiz_user:${QUIZ_DB_PASSWORD:-quiz_secret_dev}@postgres-quiz:5432/quiz_db
+
+      # Services URLs (pas utilisé par quiz-core, mais pour cohérence)
       AUTH_SERVICE_URL: http://auth-service:3001
       SUBSCRIPTION_SERVICE_URL: http://subscription-service:3002
       ADS_SERVICE_URL: http://ads-service:3004
+
+      # 🔐 mTLS Configuration
+      MTLS_ENABLED: "true"
+      MTLS_CERT_PATH: "/etc/tls/tls.crt"
+      MTLS_KEY_PATH: "/etc/tls/tls.key"
+      MTLS_CA_PATH: "/etc/tls/ca.crt"
+      MTLS_VERIFY_CLIENT: "true"
+      MTLS_STRICT_MODE: "true"
+      MTLS_CHECK_REVOCATION: "false"  # Désactivé pour dev
+      MTLS_ALLOWED_CNS: "gateway"     # Seul gateway peut se connecter
+
+    volumes:
+      # 🔐 Monter certificats mTLS (depuis scripts/certs/generated/)
+      - ./scripts/certs/generated/quiz-service.crt:/etc/tls/tls.crt:ro
+      - ./scripts/certs/generated/quiz-service.key:/etc/tls/tls.key:ro
+      - ./scripts/certs/generated/ca.crt:/etc/tls/ca.crt:ro
+
     expose:
-      - 8080
-#    ports:
-#      - "8080:8080"
+      - 8080  # HTTPS/mTLS uniquement
+    # Ne PAS exposer sur host (seulement via gateway)
+
     depends_on:
       postgres-quiz:
         condition: service_healthy
-#      auth-service:
-#        condition: service_healthy
-#      subscription-service:
-#        condition: service_healthy
+
     networks:
       - backend-network
+
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      # ⚠️ Health check doit utiliser HTTPS avec certificat client
+      test: ["CMD", "curl", "--insecure", "--cert", "/etc/tls/tls.crt", "--key", "/etc/tls/tls.key", "--cacert", "/etc/tls/ca.crt", "https://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+
     restart: unless-stopped
 
   api-gateway:
@@ -249,37 +113,53 @@ services:
       dockerfile: backend/api_gateway/Dockerfile
     container_name: api-gateway
     environment:
+      # Service config
       PORT: 8000
-      RUST_LOG: info
+      HOST: 0.0.0.0
+      RUST_LOG: debug  # Augmenté pour voir logs mTLS
 
-      # Service URLs
-      AUTH_SERVICE_URL: http://auth-service:3001
-      SUBSCRIPTION_SERVICE_URL: http://subscription-service:3002
-      ADS_SERVICE_URL: http://ads-service:3004
-      QUIZ_CORE_SERVICE_URL: http://quiz-core-service:8080
+      # 🔐 Service URLs avec HTTPS (mTLS)
+      AUTH_SERVICE_URL: http://auth-service:3001  # Pas encore mTLS
+      SUBSCRIPTION_SERVICE_URL: http://subscription-service:3002  # Pas encore mTLS
+      ADS_SERVICE_URL: http://ads-service:3004  # Pas encore mTLS
+      QUIZ_CORE_SERVICE_URL: https://quiz-core-service:8080  # ⚠️ HTTPS avec mTLS
 
       # Rate limiting
       RATE_LIMIT_REQUESTS_PER_MINUTE: 100
 
+      # 🔐 mTLS Configuration (Gateway = client + serveur)
+      MTLS_ENABLED: "true"
+      MTLS_CERT_PATH: "/etc/tls/tls.crt"
+      MTLS_KEY_PATH: "/etc/tls/tls.key"
+      MTLS_CA_PATH: "/etc/tls/ca.crt"
+      MTLS_VERIFY_CLIENT: "false"  # Gateway n'exige pas certificat client depuis frontend
+      MTLS_STRICT_MODE: "true"
+      MTLS_CHECK_REVOCATION: "false"
+      MTLS_ALLOWED_CNS: "quiz-service,auth-service"  # Services que Gateway peut appeler
+
+    volumes:
+      # 🔐 Monter certificats Gateway
+      - ./scripts/certs/generated/gateway.crt:/etc/tls/tls.crt:ro
+      - ./scripts/certs/generated/gateway.key:/etc/tls/tls.key:ro
+      - ./scripts/certs/generated/ca.crt:/etc/tls/ca.crt:ro
+
     ports:
-      - "8000:8000"
+      - "8000:8000"  # Exposé sur host (HTTP standard depuis frontend)
+
     depends_on:
-#      auth-service:
-#        condition: service_healthy
-#      subscription-service:
-#        condition: service_healthy
-#      ads-service:
-#        condition: service_healthy
       quiz-core-service:
         condition: service_healthy
+
     networks:
       - backend-network
+
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+
     restart: unless-stopped
 
 # ============================================
@@ -296,12 +176,7 @@ networks:
 
 volumes:
   postgres-auth-data:
-#    name: quiz-postgres-auth_service-data
     name: postgres-auth-data
 
   postgres-quiz-data:
     name: quiz-postgres-quiz-data
-#  postgres-subscription-data:
-#    name: quiz-postgres-subscription_service-data
-#  postgres-ads-data:
-#    name: quiz-postgres-ads_service-data

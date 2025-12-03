@@ -11,7 +11,6 @@ metadata:
     version: v1
 spec:
   replicas: 2
-  
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -195,3 +194,182 @@ spec:
   selector:
     matchLabels:
       app: quiz-backend
+
+---
+#  EXEMPLE DE MODIFICATIONS pour intégrer mTLS
+# À appliquer sur chaque deployment (gateway, quiz-service, auth-service)
+#
+#apiVersion: apps/v1
+#kind: Deployment
+#metadata:
+#  name: quiz-service
+#  namespace: quiz-app
+#  labels:
+#    app: quiz-backend
+#    service: quiz-service
+#spec:
+#  replicas: 2
+#  selector:
+#    matchLabels:
+#      app: quiz-backend
+#      service: quiz-service
+#  template:
+#    metadata:
+#      labels:
+#        app: quiz-backend
+#        service: quiz-service
+#      annotations:
+#        # Force rolling update si certificats changent
+#        checksum/tls: "{{ include (print $.Template.BasePath \"/secret.yaml\") . | sha256sum }}"
+#    spec:
+#      serviceAccountName: quiz-backend
+#      securityContext:
+#        runAsNonRoot: true
+#        runAsUser: 1000
+#        fsGroup: 1000
+#
+#      # AJOUT: Volumes pour certificats mTLS
+#      volumes:
+#        - name: tls-certs
+#          secret:
+#            secretName: quiz-service-tls  # Remplacer par gateway-tls, auth-service-tls selon le service
+#            defaultMode: 0400  # Lecture seule pour owner
+#            items:
+#              - key: tls.crt
+#                path: tls.crt
+#              - key: tls.key
+#                path: tls.key
+#              - key: ca.crt
+#                path: ca.crt
+#
+#      containers:
+#        - name: quiz-service
+#          image: quiz-backend:latest
+#          imagePullPolicy: IfNotPresent
+#
+#          # AJOUT: Montage volumes certificats
+#          volumeMounts:
+#            - name: tls-certs
+#              mountPath: /etc/tls
+#              readOnly: true
+#
+#          ports:
+#            - name: https
+#              containerPort: 8080
+#              protocol: TCP
+#
+#          env:
+#            # Configuration existante
+#            - name: RUST_LOG
+#              valueFrom:
+#                configMapKeyRef:
+#                  name: quiz-config
+#                  key: RUST_LOG
+#            - name: ENVIRONMENT
+#              valueFrom:
+#                configMapKeyRef:
+#                  name: quiz-config
+#                  key: ENVIRONMENT
+#            - name: HOST
+#              valueFrom:
+#                configMapKeyRef:
+#                  name: quiz-config
+#                  key: HOST
+#            - name: PORT
+#              valueFrom:
+#                configMapKeyRef:
+#                  name: quiz-config
+#                  key: PORT
+#            - name: DATABASE_URL
+#              valueFrom:
+#                secretKeyRef:
+#                  name: quiz-secrets
+#                  key: DATABASE_URL
+#            - name: JWT_SECRET
+#              valueFrom:
+#                secretKeyRef:
+#                  name: quiz-secrets
+#                  key: JWT_SECRET
+#
+#            # AJOUT: Variables mTLS
+#            - name: MTLS_ENABLED
+#              valueFrom:
+#                configMapKeyRef:
+#                  name: mtls-config
+#                  key: MTLS_ENABLED
+#            - name: MTLS_CERT_PATH
+#              value: "/etc/tls/tls.crt"
+#            - name: MTLS_KEY_PATH
+#              value: "/etc/tls/tls.key"
+#            - name: MTLS_CA_PATH
+#              valueFrom:
+#                configMapKeyRef:
+#                  name: mtls-config
+#                  key: MTLS_CA_PATH
+#            - name: MTLS_VERIFY_CLIENT
+#              valueFrom:
+#                configMapKeyRef:
+#                  name: mtls-config
+#                  key: MTLS_VERIFY_CLIENT
+#            - name: MTLS_CHECK_REVOCATION
+#              valueFrom:
+#                configMapKeyRef:
+#                  name: mtls-config
+#                  key: MTLS_CHECK_REVOCATION
+#            - name: MTLS_ALLOWED_CNS
+#              valueFrom:
+#                configMapKeyRef:
+#                  name: mtls-config
+#                  key: MTLS_ALLOWED_CNS
+#            - name: MTLS_STRICT_MODE
+#              valueFrom:
+#                configMapKeyRef:
+#                  name: mtls-config
+#                  key: MTLS_STRICT_MODE
+#
+#          # Health checks (adapter selon le service)
+#          livenessProbe:
+#            httpGet:
+#              path: /health
+#              port: https
+#              scheme: HTTPS  # MODIFICATION: HTTP -> HTTPS
+#            initialDelaySeconds: 30
+#            periodSeconds: 10
+#            timeoutSeconds: 5
+#            failureThreshold: 3
+#
+#          readinessProbe:
+#            httpGet:
+#              path: /ready
+#              port: https
+#              scheme: HTTPS  # MODIFICATION: HTTP -> HTTPS
+#            initialDelaySeconds: 5
+#            periodSeconds: 5
+#            timeoutSeconds: 3
+#            failureThreshold: 2
+#
+#          resources:
+#            requests:
+#              memory: "128Mi"
+#              cpu: "100m"
+#            limits:
+#              memory: "512Mi"
+#              cpu: "500m"
+#
+---
+# MODIFICATIONS À DUPLIQUER POUR:
+#
+# 1. Gateway Deployment:
+#    - secretName: gateway-tls
+#    - service: gateway
+#    - MTLS_ALLOWED_CNS doit contenir "quiz-service,auth-service"
+#
+# 2. Quiz Service Deployment:
+#    - secretName: quiz-service-tls
+#    - service: quiz-service
+#    - MTLS_ALLOWED_CNS doit contenir "gateway"
+#
+# 3. Auth Service Deployment:
+#    - secretName: auth-service-tls
+#    - service: auth-service
+#    - MTLS_ALLOWED_CNS doit contenir "gateway"

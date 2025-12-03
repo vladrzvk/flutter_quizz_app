@@ -1,15 +1,18 @@
 use axum::{
-    Router,
+    middleware,
     routing::{get, post},
+    Router,
 };
 
 use crate::{
-    AppState,
     handlers::{question_handler::*, quiz_handler::*, reponse_handler::*, session_handler::*},
+    middleware::mtls_validation::{log_mtls_connection, validate_mtls_middleware},
+    AppState,
 };
 
 pub fn create_router(app_state: AppState) -> Router {
-    Router::new()
+    // Créer le router avec toutes les routes
+    let router = Router::new()
         .route("/health", get(health_handler))
         // Quiz routes
         .route(
@@ -58,6 +61,28 @@ pub fn create_router(app_state: AppState) -> Router {
         .route(
             "/api/v1/sessions/:session_id/finalize",
             post(finalize_session_handler),
-        )
-        .with_state(app_state)
+        );
+
+    // 🔐 Ajouter middleware mTLS si activé
+    let mtls_enabled = std::env::var("MTLS_ENABLED")
+        .unwrap_or_else(|_| "false".to_string())
+        .parse::<bool>()
+        .unwrap_or(false);
+
+    let router = if mtls_enabled {
+        tracing::info!("🔐 Middleware mTLS activé sur toutes les routes API");
+        router
+            .layer(middleware::from_fn(log_mtls_connection))
+            .layer(middleware::from_fn(validate_mtls_middleware))
+    } else {
+        tracing::debug!("ℹ️  Middleware mTLS désactivé");
+        router
+    };
+
+    router.with_state(app_state)
+}
+
+// Health handler simple
+async fn health_handler() -> &'static str {
+    "OK"
 }

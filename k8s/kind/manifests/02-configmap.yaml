@@ -15,3 +15,37 @@ data:
   ENVIRONMENT: "local"
   HOST: "0.0.0.0"
   PORT: "8080"
+
+---
+# Configuration mTLS pour tous les services
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mtls-config
+  namespace: quiz-app
+  labels:
+    app: quiz-backend
+  annotations:
+    description: "Configuration mTLS pour authentification service-to-service"
+data:
+  # Activation mTLS
+  MTLS_ENABLED: "true"
+
+  # Validation stricte du certificat client
+  MTLS_VERIFY_CLIENT: "true"
+
+  # Chemin vers la CA (montée via volume)
+  MTLS_CA_PATH: "/etc/tls/ca.crt"
+
+  # Vérification révocation (CRL/OCSP)
+  MTLS_CHECK_REVOCATION: "true"
+
+  # Liste des CN (Common Names) autorisés
+  # Format: service1,service2,service3
+  MTLS_ALLOWED_CNS: "gateway,quiz-service,auth-service"
+
+  # Timeout validation (secondes)
+  MTLS_VALIDATION_TIMEOUT: "5"
+
+  # Mode strict: rejeter si certificat invalide
+  MTLS_STRICT_MODE: "true"

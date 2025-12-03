@@ -29,6 +29,10 @@ pub struct Config {
 
     // Routes publiques
     pub public_routes: Vec<String>,
+
+    /// Configuration mTLS (nouvelle section)
+    #[serde(default)]
+    pub mtls: MtlsConfig,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
@@ -36,6 +40,57 @@ pub struct Config {
 pub enum Environment {
     Development,
     Production,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct MtlsConfig {
+    /// Activer mTLS pour les appels inter-services
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// Chemin certificat client (gateway.crt)
+    #[serde(default = "default_cert_path")]
+    pub cert_path: String,
+
+    /// Chemin clé privée (gateway.key)
+    #[serde(default = "default_key_path")]
+    pub key_path: String,
+
+    /// Chemin CA racine (ca.crt)
+    #[serde(default = "default_ca_path")]
+    pub ca_path: String,
+
+    /// Mode strict: rejeter si erreur mTLS
+    #[serde(default = "default_true")]
+    pub strict_mode: bool,
+}
+
+impl Default for MtlsConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            cert_path: "/etc/tls/tls.crt".to_string(),
+            key_path: "/etc/tls/tls.key".to_string(),
+            ca_path: "/etc/tls/ca.crt".to_string(),
+            strict_mode: true,
+        }
+    }
+}
+
+fn default_cert_path() -> String {
+    "/etc/tls/tls.crt".to_string()
+}
+
+fn default_key_path() -> String {
+    "/etc/tls/tls.key".to_string()
+}
+
+fn default_ca_path() -> String {
+    "/etc/tls/ca.crt".to_string()
+}
+
+fn default_true() -> bool {
+    true
 }
 
 impl Config {
@@ -49,6 +104,13 @@ impl Config {
             _ => Environment::Development,
         };
 
+        // Charger config mTLS depuis env
+        let mtls_enabled = std::env::var("MTLS_ENABLED")
+            .unwrap_or_else(|_| "false".to_string())
+            .parse()
+            .unwrap_or(false);
+
+
         let cors_origins = if environment == Environment::Development {
             vec!["*".to_string()]
         } else {
@@ -60,6 +122,24 @@ impl Config {
                 .collect()
         };
 
+        let mtls = if mtls_enabled {
+            MtlsConfig {
+                enabled: true,
+                cert_path: std::env::var("MTLS_CERT_PATH")
+                    .unwrap_or_else(|_| "/etc/tls/tls.crt".to_string()),
+                key_path: std::env::var("MTLS_KEY_PATH")
+                    .unwrap_or_else(|_| "/etc/tls/tls.key".to_string()),
+                ca_path: std::env::var("MTLS_CA_PATH")
+                    .unwrap_or_else(|_| "/etc/tls/ca.crt".to_string()),
+                strict_mode: std::env::var("MTLS_STRICT_MODE")
+                    .unwrap_or_else(|_| "true".to_string())
+                    .parse()
+                    .unwrap_or(true),
+            }
+        } else {
+            MtlsConfig::default()
+        };
+
         Ok(Self {
             port: env::var("PORT")
                 .unwrap_or_else(|_| "8000".to_string())
@@ -67,7 +147,7 @@ impl Config {
             jwt_secret: env::var("JWT_SECRET")
                 .unwrap_or_else(|_| "dev_secret_change_in_prod".to_string()),
             environment,
-
+            mtls,
             auth_service_url: env::var("AUTH_SERVICE_URL")
                 .unwrap_or_else(|_| "http://auth-service:3001".to_string()),
             quiz_service_url: env::var("QUIZ_SERVICE_URL")

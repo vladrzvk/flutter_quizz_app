@@ -4,9 +4,14 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use std::time::Duration;
-
 use crate::config::Config;
 use crate::middleware::CircuitBreaker;
+use anyhow::Result;
+use reqwest::Client;
+use serde::{Deserialize, Serialize};
+use shared::tls::{create_mtls_client, MtlsClient};
+use std::sync::Arc;
+use tracing::{info, error, warn};
 
 #[derive(Clone)]
 pub struct ServiceProxy {
@@ -192,4 +197,197 @@ impl IntoResponse for ProxyError {
 
         (status, message).into_response()
     }
+}
+
+
+/// Client HTTP pour appels inter-services
+pub enum HttpClient {
+    /// Client standard (sans mTLS)
+    Standard(Client),
+
+    /// Client mTLS (avec authentification mutuelle)
+    Mtls(MtlsClient),
+}
+
+
+
+impl HttpClient {
+    /// Effectue une requête GET
+    pub async fn get(&self, url: &str) -> Result<reqwest::Response> {
+        match self {
+            Self::Standard(client) => {
+                info!("📡 GET standard: {}", url);
+                Ok(client.get(url).send().await?)
+            }
+            Self::Mtls(client) => {
+                info!("🔐 GET mTLS: {}", url);
+                Ok(client.get(url).await?)
+            }
+        }
+    }
+
+    /// Effectue une requête POST
+    pub async fn post<T: Serialize>(
+        &self,
+        url: &str,
+        json: &T,
+    ) -> Result<reqwest::Response> {
+        match self {
+            Self::Standard(client) => {
+                info!("📡 POST standard: {}", url);
+                Ok(client.post(url).json(json).send().await?)
+            }
+            Self::Mtls(client) => {
+                info!("🔐 POST mTLS: {}", url);
+                Ok(client.post(url, json).await?)
+            }
+        }
+    }
+
+    /// Effectue une requête PUT
+    pub async fn put<T: Serialize>(
+        &self,
+        url: &str,
+        json: &T,
+    ) -> Result<reqwest::Response> {
+        match self {
+            Self::Standard(client) => {
+                info!("📡 PUT standard: {}", url);
+                Ok(client.put(url).json(json).send().await?)
+            }
+            Self::Mtls(client) => {
+                info!("🔐 PUT mTLS: {}", url);
+                Ok(client.put(url, json).await?)
+            }
+        }
+    }
+
+    /// Effectue une requête DELETE
+    pub async fn delete(&self, url: &str) -> Result<reqwest::Response> {
+        match self {
+            Self::Standard(client) => {
+                info!("📡 DELETE standard: {}", url);
+                Ok(client.delete(url).send().await?)
+            }
+            Self::Mtls(client) => {
+                info!("🔐 DELETE mTLS: {}", url);
+                Ok(client.delete(url).await?)
+            }
+        }
+    }
+}
+
+/// Service Proxy pour communication avec services backend
+pub struct ServiceProxy {
+    /// Client HTTP (standard ou mTLS)
+    http_client: Arc<HttpClient>,
+
+    /// URL Quiz Service
+    quiz_service_url: String,
+
+    /// URL Auth Service
+    auth_service_url: String,
+}
+
+impl ServiceProxy {
+    /// Crée un nouveau proxy avec mTLS si activé
+    pub fn new(
+        quiz_service_url: String,
+        auth_service_url: String,
+        mtls_enabled: bool,
+    ) -> Result<Self> {
+        info!("🔧 Initialisation ServiceProxy (mTLS: {})", mtls_enabled);
+
+        let http_client = if mtls_enabled {
+            match create_mtls_client() {
+                Ok(client) => {
+                    info!("✅ Client mTLS créé avec succès");
+                    Arc::new(HttpClient::Mtls(client))
+                }
+                Err(e) => {
+                    error!("❌ Erreur création client mTLS: {}", e);
+                    warn!("⚠️  Fallback vers client HTTP standard");
+                    Arc::new(HttpClient::Standard(Client::new()))
+                }
+            }
+        } else {
+            info!("ℹ️  Client HTTP standard (mTLS désactivé)");
+            Arc::new(HttpClient::Standard(Client::new()))
+        };
+
+        Ok(Self {
+            http_client,
+            quiz_service_url,
+            auth_service_url,
+        })
+    }
+
+    /// Appel Quiz Service - GET /quizzes
+    pub async fn get_quizzes(&self) -> Result<Vec<Quiz>> {
+        let url = format!("{}/api/quizzes", self.quiz_service_url);
+
+        let response = self.http_client.get(&url).await?;
+
+        if !response.status().is_success() {
+            error!("❌ Erreur Quiz Service: {}", response.status());
+            return Err(anyhow::anyhow!("Quiz Service error: {}", response.status()));
+        }
+
+        let quizzes = response.json::<Vec<Quiz>>().await?;
+        Ok(quizzes)
+    }
+
+    /// Appel Quiz Service - GET /quizzes/{id}
+    pub async fn get_quiz(&self, id: &str) -> Result<Quiz> {
+        let url = format!("{}/api/quizzes/{}", self.quiz_service_url, id);
+
+        let response = self.http_client.get(&url).await?;
+
+        if !response.status().is_success() {
+            error!("❌ Erreur Quiz Service: {}", response.status());
+            return Err(anyhow::anyhow!("Quiz not found"));
+        }
+
+        let quiz = response.json::<Quiz>().await?;
+        Ok(quiz)
+    }
+
+    /// Appel Auth Service - POST /auth/validate
+    pub async fn validate_token(&self, token: &str) -> Result<AuthUser> {
+        let url = format!("{}/auth/validate", self.auth_service_url);
+
+        #[derive(Serialize)]
+        struct ValidateRequest {
+            token: String,
+        }
+
+        let request = ValidateRequest {
+            token: token.to_string(),
+        };
+
+        let response = self.http_client.post(&url, &request).await?;
+
+        if !response.status().is_success() {
+            error!("❌ Token invalide: {}", response.status());
+            return Err(anyhow::anyhow!("Invalid token"));
+        }
+
+        let user = response.json::<AuthUser>().await?;
+        Ok(user)
+    }
+}
+
+// Types de données (adapter selon votre domaine)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Quiz {
+    pub id: String,
+    pub title: String,
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthUser {
+    pub id: String,
+    pub email: String,
+    pub role: String,
 }
