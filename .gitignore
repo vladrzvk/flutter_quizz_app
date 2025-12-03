@@ -126,3 +126,5 @@ app.*.symbols
 /backend/.env.test
 /frontend/.env
 /k8s/kind/setup-kind.ps1
+scripts/certs/generated/
+target/
