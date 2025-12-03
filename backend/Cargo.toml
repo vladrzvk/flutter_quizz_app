@@ -7,7 +7,6 @@ members = [
     "api_gateway",
 #    "subscription_service",
 #    "ads_service",
-#    "api_gateway"
 ]
 
 [workspace.package]

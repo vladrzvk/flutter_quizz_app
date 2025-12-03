@@ -183,7 +183,7 @@ mod tests {
     #[test]
     fn test_config_disabled_when_no_env() {
         // Sans MTLS_ENABLED, doit retourner erreur
-        std::env::remove_var("MTLS_ENABLED");
+        unsafe { std::env::remove_var("MTLS_ENABLED"); }
         let result = TlsConfig::from_env();
         assert!(matches!(result, Err(TlsConfigError::MtlsDisabled)));
     }

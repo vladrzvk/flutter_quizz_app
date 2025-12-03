@@ -113,7 +113,7 @@ mod tests {
     #[test]
     fn test_acceptor_creation_fails_without_config() {
         // Sans configuration mTLS, doit échouer
-        std::env::remove_var("MTLS_ENABLED");
+        unsafe { std::env::remove_var("MTLS_ENABLED"); }
         let result = create_mtls_acceptor();
         assert!(result.is_err());
     }

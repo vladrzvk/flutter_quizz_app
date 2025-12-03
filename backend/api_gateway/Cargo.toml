@@ -16,3 +16,7 @@ dotenvy = { workspace = true }
 anyhow = { workspace = true }
 reqwest = { workspace = true }
 jsonwebtoken = { workspace = true }
+shared = { path = "../shared" }
+hyper = "1.0"
+hyper-util = "0.1"
+tokio-rustls = "0.25"

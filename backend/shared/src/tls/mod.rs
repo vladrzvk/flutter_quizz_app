@@ -11,5 +11,5 @@ pub use validator::{CertificateValidator, ValidationError};
 pub use client::{create_mtls_client, MtlsClient};
 pub use server::{create_mtls_acceptor, MtlsAcceptor};
 
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod tests;

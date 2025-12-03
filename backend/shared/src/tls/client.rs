@@ -40,7 +40,7 @@ impl MtlsClient {
             root_store
                 .add(&rustls::Certificate(ca_cert.0.clone()))
                 .map_err(|e| {
-                    error!("❌ Erreur ajout CA au root store: {:?}", e);
+                    error!(" Erreur ajout CA au root store: {:?}", e);
                     MtlsClientError::InvalidCaCertificate
                 })?;
         }
@@ -56,7 +56,7 @@ impl MtlsClient {
                 config.private_key.clone(),
             )
             .map_err(|e| {
-                error!("❌ Erreur configuration certificat client: {:?}", e);
+                error!(" Erreur configuration certificat client: {:?}", e);
                 MtlsClientError::RustlsError(e.to_string())
             })?;
 
@@ -123,7 +123,7 @@ mod tests {
     #[test]
     fn test_client_creation_fails_without_config() {
         // Sans configuration mTLS, doit échouer
-        std::env::remove_var("MTLS_ENABLED");
+        unsafe { std::env::remove_var("MTLS_ENABLED"); }
         let result = create_mtls_client();
         assert!(result.is_err());
     }
