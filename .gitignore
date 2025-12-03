@@ -126,4 +126,6 @@ app.*.symbols
 /backend/.env.test
 /frontend/.env
 /k8s/kind/setup-kind.ps1
-/scripts/certs/generated/
+/scripts/certs/generated/*.crt
+/scripts/certs/generated/*.key
+/scripts/certs/generated/*.srl
