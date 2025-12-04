@@ -110,7 +110,7 @@ impl QuizPlugin for GeographyPlugin {
 
     /// Seed des données géographiques (on le fera plus tard)
     async fn seed_data(&self, _pool: &PgPool) -> Result<(), AppError> {
-        tracing::info!("🌍 Geography plugin: seed data will be done via SQL script");
+        tracing::info!("🌍 Geography plugin: seed data will be done via SQL scripts");
         Ok(())
     }
 }

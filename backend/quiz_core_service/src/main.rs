@@ -3,21 +3,23 @@ mod dto;
 mod handlers;
 mod json_utf8;
 mod models;
-mod plugins; // 🆕 Plugin system
+mod mtls; // ✅ NOUVEAU
+mod plugins;
 mod repositories;
 mod routes;
 mod services;
 
 use axum::http::header;
+// use hyper_util::server;
 use config::Config;
-use plugins::{GeographyPlugin, PluginRegistry}; // 🆕
+use plugins::{GeographyPlugin, PluginRegistry};
 use sqlx::PgPool;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tower_http::{cors::CorsLayer, set_header::SetResponseHeaderLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-/// 🆕 App State avec Plugin Registry
+/// App State avec Plugin Registry
 #[derive(Clone)]
 pub struct AppState {
     pub pool: PgPool,
@@ -43,10 +45,9 @@ async fn main() -> anyhow::Result<()> {
     let pool = PgPool::connect(&config.database_url).await?;
     tracing::info!("✅ Connected to database");
 
-    // 🆕 Plugin Registry
+    // Plugin Registry
     tracing::info!("🔌 Initializing plugin registry...");
     let mut plugin_registry = PluginRegistry::new();
-    // 🆕 Enregistrer Geography Plugin
     plugin_registry.register(Arc::new(GeographyPlugin));
 
     tracing::info!(
@@ -68,30 +69,69 @@ async fn main() -> anyhow::Result<()> {
             header::HeaderValue::from_static("application/json; charset=utf-8"),
         ));
 
-    // Server : en localhost direct
-    // let addr = SocketAddr::from(([127, 0, 0, 1], config.server_port));
+    let addr: SocketAddr = format!("{}:{}", config.server_host, config.server_port)
+        .parse()?;
 
-    // Récupérer HOST depuis l'env, défaut à 0.0.0.0
+    // ✅ NOUVEAU: Démarrage conditionnel avec ou sans mTLS
+    if config.mtls_enabled {
+        tracing::info!("🔐 mTLS mode enabled");
 
-    let addr = format!("{}:{}", config.server_host, config.server_port);
+        // Charger et valider configuration mTLS
+        let mtls_config = mtls::MtlsConfig::from_env()?;
+        mtls_config.validate()?;
 
-    tracing::info!("🚀 Quiz Core Service listening on {}", addr);
-    tracing::info!(
-        "📍 API: http://{}:{}/api/v1",
-        config.server_host,
-        config.server_port
-    );
-    tracing::info!(
-        "📍 Health: http://{}:{}/health",
-        config.server_host,
-        config.server_port
-    );
+        // Créer TLS acceptor
+        let tls_acceptor = mtls::create_mtls_acceptor(&mtls_config)?;
 
-    // let listener = tokio::net::TcpListener::bind(addr).await?;
-    let listener = tokio::net::TcpListener::bind(&addr)
-        .await
-        .expect("Failed to bind");
-    axum::serve(listener, app).await?;
+        tracing::info!("🚀 Quiz Core Service (mTLS) listening on https://{}", addr);
+        tracing::info!("📍 API: https://{}:{}/api/v1", config.server_host, config.server_port);
+        tracing::info!("📍 Health: https://{}:{}/health", config.server_host, config.server_port);
+
+        // Créer listener TCP
+        let listener = tokio::net::TcpListener::bind(addr).await?;
+
+        // Serveur avec TLS
+        loop {
+            let (tcp_stream, remote_addr) = listener.accept().await?;
+            let tls_acceptor = tls_acceptor.clone();
+            let app = app.clone();
+
+            tokio::spawn(async move {
+                match tls_acceptor.accept(tcp_stream).await {
+                    Ok(tls_stream) => {
+                        let tower_service = tower::ServiceExt::map_response(
+                            app,
+                            |response| response
+                        );
+
+                        if let Err(e) = hyper_util::server::conn::auto::Builder::new(
+                            hyper_util::rt::TokioExecutor::new()
+                        )
+                            .serve_connection(
+                                hyper_util::rt::TokioIo::new(tls_stream),
+                                tower_service
+                            )
+                            .await
+                        {
+                            tracing::error!("Error serving connection from {}: {}", remote_addr, e);
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!("TLS handshake failed from {}: {}", remote_addr, e);
+                    }
+                }
+            });
+        }
+    } else {
+        tracing::info!("🔓 Running without mTLS (HTTP mode)");
+        tracing::info!("🚀 Quiz Core Service listening on http://{}", addr);
+        tracing::info!("📍 API: http://{}:{}/api/v1", config.server_host, config.server_port);
+        tracing::info!("📍 Health: http://{}:{}/health", config.server_host, config.server_port);
+
+        // Serveur sans TLS (mode actuel)
+        let listener = tokio::net::TcpListener::bind(&addr).await?;
+        axum::serve(listener, app).await?;
+    }
 
     Ok(())
 }

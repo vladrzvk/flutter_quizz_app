@@ -14,6 +14,7 @@ mod tests {
 }
 
 pub mod error;
+mod tls;
 
 // Re-export pour faciliter l'usage
 pub use error::*;

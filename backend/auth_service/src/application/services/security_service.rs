@@ -230,9 +230,9 @@ mod tests {
 
     #[test]
     fn test_sanitize_html() {
-        let input = "<script>alert('xss')</script>Hello";
+        let input = "<scripts>alert('xss')</scripts>Hello";
         let sanitized = SecurityService::sanitize_html(input);
-        assert!(!sanitized.contains("<script>"));
+        assert!(!sanitized.contains("<scripts>"));
         assert!(sanitized.contains("Hello"));
     }
 
@@ -265,9 +265,9 @@ mod tests {
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "<b>John</b>"); // <b> est autorisé par ammonia
 
-        let result = service.sanitize_display_name("<script>alert('xss')</script>");
+        let result = service.sanitize_display_name("<scripts>alert('xss')</scripts>");
         assert!(result.is_ok());
         let sanitized = result.unwrap();
-        assert!(!sanitized.contains("<script>"));
+        assert!(!sanitized.contains("<scripts>"));
     }
 }

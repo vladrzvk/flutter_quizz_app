@@ -32,7 +32,7 @@
 #
 #    scripts:
 #      - name: Set up code signing
-#        script: |
+#        scripts: |
 #          keychain initialize
 #          keychain add-certificates
 #          xcode-project use-profiles
@@ -40,15 +40,15 @@
 #          ls -la ~/Library/MobileDevice/Provisioning\ Profiles/ || true
 #
 #      - name: Get Flutter packages
-#        script: |
+#        scripts: |
 #          flutter packages pub get
 #
 #      - name: Flutter clean
-#        script: |
+#        scripts: |
 #          flutter clean
 #
 #      - name: Generate iOS platform files
-#        script: |
+#        scripts: |
 #          # Cette commande génère les fichiers iOS nécessaires incluant le Podfile
 #          flutter create --platform ios . --org com.petits.quizz.de.geo
 #
@@ -56,7 +56,7 @@
 #          # flutter build ios --config-only  --no-codesign
 #
 #      - name: Configure iOS deployment target
-#        script: |
+#        scripts: |
 #          cd ios
 #
 #          # Vérifier que le Podfile existe maintenant
@@ -85,13 +85,13 @@
 #          sed -i '' "s/IPHONEOS_DEPLOYMENT_TARGET = .*/IPHONEOS_DEPLOYMENT_TARGET = 13.0;/g" Runner.xcodeproj/project.pbxproj
 #
 #      - name: Install CocoaPods dependencies
-#        script: |
+#        scripts: |
 #          cd ios
 #          rm -rf Pods Podfile.lock
 #          pod install --repo-update
 #
 #      - name: Build IPA
-#        script: |
+#        scripts: |
 #          BUILD_NUMBER=$(date +%Y%m%d%H%M)
 #
 #          # Créer le fichier ExportOptions.plist
@@ -172,30 +172,30 @@
 ##
 ##      scripts:
 ##        - name: Set up code signing
-##          script: |
+##          scripts: |
 ##            keychain initialize
 ##            keychain add-certificates
 ##            xcode-project use-profiles
 ##
 ##        - name: Get Flutter packages
-##          script: |
+##          scripts: |
 ##            flutter packages pub get
 ##
 ##        - name: Flutter analyze
-##          script: |
+##          scripts: |
 ##            flutter analyze
 ##
 ##        - name: Run tests
-##          script: |
+##          scripts: |
 ##            flutter test
 ##          ignore_failure: false
 ##
 ##        - name: Install pods
-##          script: |
+##          scripts: |
 ##            find . -name "Podfile" -execdir pod install \;
 ##
 ##        - name: Build IPA
-##          script: |
+##          scripts: |
 ##            BUILD_NUMBER=$(($(git rev-list --count HEAD) + 1))
 ##            flutter build ipa --release --build-number=$BUILD_NUMBER
 ##
@@ -258,29 +258,29 @@
 #  #
 #  #          scripts:
 #  #            - name: Set up local properties
-#  #              script: |
+#  #              scripts: |
 #  #                echo "flutter.sdk=$HOME/programs/flutter" > "$CM_BUILD_DIR/android/local.properties"
 #  #
 #  #            - name: Get Flutter packages
-#  #              script: |
+#  #              scripts: |
 #  #                flutter packages pub get
 #  #
 #  #            - name: Flutter analyze
-#  #              script: |
+#  #              scripts: |
 #  #                flutter analyze
 #  #
 #  #            - name: Run tests
-#  #              script: |
+#  #              scripts: |
 #  #                flutter test
 #  #              ignore_failure: false
 #  #
 #  #            - name: Build APK
-#  #              script: |
+#  #              scripts: |
 #  #                BUILD_NUMBER=$(($(git rev-list --count HEAD) + 1))
 #  #                flutter build apk --release --build-number=$BUILD_NUMBER
 #  #
 #  #            - name: Build App Bundle
-#  #              script: |
+#  #              scripts: |
 #  #                BUILD_NUMBER=$(($(git rev-list --count HEAD) + 1))
 #  #                flutter build appbundle --release --build-number=$BUILD_NUMBER
 #  #

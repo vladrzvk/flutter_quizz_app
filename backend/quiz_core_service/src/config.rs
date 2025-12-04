@@ -5,6 +5,7 @@ pub struct Config {
     pub database_url: String,
     pub server_port: u16,
     pub server_host: String,
+    pub mtls_enabled: bool,
 }
 
 impl Config {
@@ -18,6 +19,12 @@ impl Config {
                 .parse()
                 .expect("SERVER_PORT must be a valid port number"),
             server_host: env::var("SERVER_HOST").unwrap_or_else(|_| "0.0.0.0".to_string()),
+
+            mtls_enabled: env::var("MTLS_ENABLED")
+                .unwrap_or_else(|_| "false".to_string())
+                .parse()
+                .unwrap_or(false),
+        }
         }
     }
-}
+

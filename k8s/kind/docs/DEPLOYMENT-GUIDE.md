@@ -13,7 +13,7 @@
 ```powershell
 cd k8s/kind
 
-# Executer le script de setup
+# Executer le scripts de setup
 .\setup-kind.ps1
 ```
 

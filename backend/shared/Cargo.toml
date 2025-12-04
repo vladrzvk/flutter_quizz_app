@@ -1,7 +1,7 @@
 [package]
 name = "shared"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [dependencies]
 # Depuis le workspace
@@ -12,5 +12,19 @@ chrono = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
 axum = { workspace = true }
-sqlx = "0.9.0-alpha.1"
-tracing = "0.1.41"
+tracing = { workspace = true }
+
+# Database
+sqlx = { workspace = true }
+
+# TLS/mTLS
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+rustls-pemfile = "2.0"
+tokio-rustls = "0.26"
+webpki-roots = "0.26"
+
+# HTTP client avec mTLS
+reqwest = { workspace = true, default-features = false, features = ["rustls-tls-manual-roots", "json"] }
+
+# Async runtime
+tokio = { workspace = true }

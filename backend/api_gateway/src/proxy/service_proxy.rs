@@ -16,16 +16,12 @@ pub struct ServiceProxy {
 }
 
 impl ServiceProxy {
-    pub fn new(config: Config) -> Self {
-        let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(30)) // Default timeout
-            .build()
-            .expect("Failed to create HTTP client");
-
+    /// ✅ NOUVEAU: Accepte un client reqwest pré-configuré (avec ou sans mTLS)
+    pub fn new(config: Config, client: reqwest::Client) -> Self {
         Self {
             client,
             config,
-            circuit_breaker: CircuitBreaker::new(5, 30), // 5 failures, 30s timeout
+            circuit_breaker: CircuitBreaker::new(5, 30),
         }
     }
 
@@ -37,7 +33,6 @@ impl ServiceProxy {
         headers: HeaderMap,
         body: Body,
     ) -> Result<Response, ProxyError> {
-        // Vérifier circuit breaker
         if self.circuit_breaker.is_open().await {
             tracing::error!("Circuit breaker is open for {:?}", service);
             return Err(ProxyError::ServiceUnavailable);

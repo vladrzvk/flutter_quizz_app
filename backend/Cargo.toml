@@ -20,7 +20,7 @@ license = "MIT"
 # ============================================
 # DÉPENDANCES EXISTANTES (versions utilisateur)
 # ============================================
-
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 # Async runtime
 tokio = { version = "1.35", features = ["full"] }
 
@@ -72,3 +72,4 @@ validator = { version = "0.18", features = ["derive"] }
 
 # Utilities
 tokio-util = "0.7"
+

@@ -14,5 +14,12 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 dotenvy = { workspace = true }
 anyhow = { workspace = true }
-reqwest = { workspace = true }
+reqwest = { workspace = true, default-features = false, features = ["rustls-tls-manual-roots"] }
 jsonwebtoken = { workspace = true }
+thiserror = "1.0"
+
+# ✅ NOUVEAU: mTLS support avec ring backend (pas de CMake requis)
+tokio-rustls = "0.26"
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+rustls-pemfile = "2.0"
+hyper-util = { version = "0.1", features = ["tokio", "server", "server-auto"] }

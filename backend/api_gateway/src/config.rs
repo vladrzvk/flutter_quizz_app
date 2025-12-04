@@ -29,6 +29,9 @@ pub struct Config {
 
     // Routes publiques
     pub public_routes: Vec<String>,
+
+    // ✅ NOUVEAU: mTLS configuration
+    pub mtls_enabled: bool,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
@@ -108,6 +111,12 @@ impl Config {
                 "/api/auth/refresh".to_string(),
                 "/api/quiz/list".to_string(),
             ],
+
+            // ✅ NOUVEAU
+            mtls_enabled: env::var("MTLS_ENABLED")
+                .unwrap_or_else(|_| "false".to_string())
+                .parse()
+                .unwrap_or(false),
         })
     }
 
