@@ -9,6 +9,7 @@ RUN cargo install cargo-chef
 # Copier le workspace complet
 COPY backend/Cargo.toml backend/Cargo.lock ./
 COPY backend/auth_service ./auth_service
+COPY backend/api_gateway ./api_gateway
 COPY backend/shared ./shared
 COPY backend/quiz_core_service ./quiz_core_service
 
@@ -55,6 +56,7 @@ COPY --from=cacher /usr/local/cargo /usr/local/cargo
 COPY backend/Cargo.toml backend/Cargo.lock ./
 COPY backend/auth_service ./auth_service
 COPY backend/shared ./shared
+COPY backend/api_gateway ./api_gateway
 COPY backend/quiz_core_service ./quiz_core_service
 
 # Build le code applicatif
@@ -69,6 +71,7 @@ WORKDIR /app
 
 # Installer runtime dependencies
 RUN apt-get update && apt-get install -y \
+    libc6 \
     ca-certificates \
     libssl3 \
     curl \

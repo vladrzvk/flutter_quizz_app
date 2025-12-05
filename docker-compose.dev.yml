@@ -95,60 +95,60 @@ services:
   # BACKEND SERVICES avec mTLS
   # ============================================
 
-  #  auth-service:
-  #    build:
-  #      context: .
-  #      dockerfile: docker/auth.Dockerfile
-  #      args:
-  #        SERVICE_NAME: auth_service
-  #    container_name: auth_service-service
-  #    environment:
-  #      # Service config
-  #      PORT: 3001
-  #      RUST_LOG: info
-  #
-  #      # Database
-  #      DATABASE_URL: postgres://auth_user:${AUTH_DB_PASSWORD:-auth_secret_dev}@postgres-auth_service:5432/auth_db
-  #
-  #      # mTLS Configuration (serveur)
-  #      MTLS_ENABLED: "true"
-  #      MTLS_CERT_PATH: "/etc/tls/tls.crt"
-  #      MTLS_KEY_PATH: "/etc/tls/tls.key"
-  #      MTLS_CA_PATH: "/etc/tls/ca.crt"
-  #      MTLS_VERIFY_CLIENT: "true"
-  #      MTLS_STRICT_MODE: "true"
-  #      MTLS_ALLOWED_CNS: "gateway"
-  #
-  #      # JWT
-  #      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_in_production}
-  #      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev_refresh_secret_change_in_production}
-  #      JWT_EXPIRATION_HOURS: 168
-  #      JWT_REFRESH_EXPIRATION_HOURS: 720
-  #
-  #      # OAuth
-  #      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-  #      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-  #      APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-}
-  #      APPLE_TEAM_ID: ${APPLE_TEAM_ID:-}
-  #
-  #    volumes:
-  #      - ./scripts/certs/generated/auth-service.crt:/etc/tls/tls.crt:ro
-  #      - ./scripts/certs/generated/auth-service.key:/etc/tls/tls.key:ro
-  #      - ./scripts/certs/generated/ca.crt:/etc/tls/ca.crt:ro
-  #    ports:
-  #      - "3001:3001"
-  #    depends_on:
-  #      postgres-auth:
-  #        condition: service_healthy
-  #    networks:
-  #      - backend-network
-  #    healthcheck:
-  #      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
-  #      interval: 30s
-  #      timeout: 10s
-  #      retries: 3
-  #      start_period: 40s
-  #    restart: unless-stopped
+  auth-service:
+      build:
+        context: .
+        dockerfile: backend/auth_service/Dockerfile
+        args:
+          SERVICE_NAME: auth_service
+      container_name: auth_service-service
+      environment:
+        # Service config
+        PORT: 3001
+        RUST_LOG: info
+
+        # Database
+        DATABASE_URL: postgres://auth_user:${AUTH_DB_PASSWORD:-auth_secret_dev}@postgres-auth_service:5432/auth_db
+
+        # mTLS Configuration (serveur)
+        MTLS_ENABLED: "true"
+        MTLS_CERT_PATH: "/etc/tls/tls.crt"
+        MTLS_KEY_PATH: "/etc/tls/tls.key"
+        MTLS_CA_PATH: "/etc/tls/ca.crt"
+        MTLS_VERIFY_CLIENT: "true"
+        MTLS_STRICT_MODE: "true"
+        MTLS_ALLOWED_CNS: "gateway"
+
+        # JWT
+        JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_in_production}
+        JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev_refresh_secret_change_in_production}
+        JWT_EXPIRATION_HOURS: 168
+        JWT_REFRESH_EXPIRATION_HOURS: 720
+
+        # OAuth
+        GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+        GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+        APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-}
+        APPLE_TEAM_ID: ${APPLE_TEAM_ID:-}
+
+      volumes:
+        - ./scripts/certs/generated/auth-service.crt:/etc/tls/tls.crt:ro
+        - ./scripts/certs/generated/auth-service.key:/etc/tls/tls.key:ro
+        - ./scripts/certs/generated/ca.crt:/etc/tls/ca.crt:ro
+      ports:
+        - "3001:3001"
+      depends_on:
+        postgres-auth:
+          condition: service_healthy
+      networks:
+        - backend-network
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+        interval: 30s
+        timeout: 10s
+        retries: 3
+        start_period: 40s
+      restart: unless-stopped
 
   #  subscription-service:
   #    build:
@@ -246,8 +246,8 @@ services:
 
       # Service URLs (non utilises directement mais gardes pour compatibilite)
       AUTH_SERVICE_URL: https://auth-service:3001
-      SUBSCRIPTION_SERVICE_URL: http://subscription-service:3002
-      ADS_SERVICE_URL: http://ads-service:3004
+#      SUBSCRIPTION_SERVICE_URL: http://subscription-service:3002
+#      ADS_SERVICE_URL: http://ads-service:3004
 
     volumes:
       # Monter les certificats mTLS
@@ -288,8 +288,8 @@ services:
       # Service URLs (HTTPS pour mTLS)
       AUTH_SERVICE_URL: https://auth-service:3001
       QUIZ_CORE_SERVICE_URL: https://quiz-core-service:8080
-      SUBSCRIPTION_SERVICE_URL: http://subscription-service:3002
-      ADS_SERVICE_URL: http://ads-service:3004
+#      SUBSCRIPTION_SERVICE_URL: http://subscription-service:3002
+#      ADS_SERVICE_URL: http://ads-service:3004
 
       # Rate limiting
       RATE_LIMIT_REQUESTS_PER_MINUTE: 100

@@ -10,6 +10,7 @@ COPY backend/Cargo.toml backend/Cargo.lock ./
 COPY backend/quiz_core_service ./quiz_core_service
 # ajouter les autres services ici
 COPY backend/shared ./shared
+COPY backend/auth_service ./auth_service
 COPY backend/api_gateway ./api_gateway
 
 RUN cargo chef prepare --recipe-path recipe.json --bin quiz_core_service
@@ -54,6 +55,7 @@ COPY backend/Cargo.toml backend/Cargo.lock ./
 COPY backend/quiz_core_service ./quiz_core_service
 # ajouter les autres services ici aussi
 COPY backend/shared ./shared
+COPY backend/auth_service ./auth_service
 COPY backend/api_gateway ./api_gateway
 
 # Build le code applicatif
@@ -67,6 +69,7 @@ FROM debian:bookworm-slim
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y \
+    libc6 \
     libpq5 \
     libssl3 \
     ca-certificates \

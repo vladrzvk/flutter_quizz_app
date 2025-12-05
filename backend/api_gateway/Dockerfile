@@ -10,6 +10,7 @@ RUN cargo install cargo-chef
 COPY backend/Cargo.toml backend/Cargo.lock ./
 COPY backend/api_gateway ./api_gateway
 COPY backend/shared ./shared
+COPY backend/auth_service ./auth_service
 COPY backend/quiz_core_service ./quiz_core_service
 
 # Analyser les dépendances pour api_gateway
@@ -55,6 +56,7 @@ COPY --from=cacher /usr/local/cargo /usr/local/cargo
 COPY backend/Cargo.toml backend/Cargo.lock ./
 COPY backend/api_gateway ./api_gateway
 COPY backend/shared ./shared
+COPY backend/auth_service ./auth_service
 COPY backend/quiz_core_service ./quiz_core_service
 
 # Build le code applicatif
