@@ -64,7 +64,7 @@ RUN cargo build --release --bin quiz_core_service
 # ============================================
 # Stage 4: Runtime
 # ============================================
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 WORKDIR /app
 

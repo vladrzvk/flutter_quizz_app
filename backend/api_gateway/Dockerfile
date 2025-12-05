@@ -65,7 +65,7 @@ RUN cargo build --release --bin api_gateway
 # ============================================
 # Stage 4: Runtime
 # ============================================
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 WORKDIR /app
 
