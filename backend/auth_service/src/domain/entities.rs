@@ -54,6 +54,20 @@ impl std::fmt::Display for UserStatus {
     }
 }
 
+impl std::str::FromStr for UserStatus {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "free" => Ok(UserStatus::Free),
+            "premium" => Ok(UserStatus::Premium),
+            "trial" => Ok(UserStatus::Trial),
+            "suspended" => Ok(UserStatus::Suspended),
+            _ => Err(format!("Invalid user status: {}", s)),
+        }
+    }
+}
+
 // ============================================
 // ROLE ENTITY
 // ============================================

@@ -8,21 +8,16 @@ use axum::{
 };
 use std::sync::Arc;
 
-use crate::{
-    config::Config,
-    proxy::{ServiceProxy, ServiceType},
-};
+use crate::proxy::{ServiceProxy, ServiceType};
 
-pub fn create_router(config: Arc<Config>) -> Router {
-    let proxy = ServiceProxy::new((*config).clone());
-
+pub fn create_router(proxy: Arc<ServiceProxy>) -> Router {
     Router::new()
         // Health check
         .route("/health", get(health_check))
 
         // Proxy all other routes
         .fallback(proxy_handler)
-        .with_state(Arc::new(proxy))
+        .with_state(proxy)
 }
 
 async fn health_check() -> impl IntoResponse {

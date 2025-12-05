@@ -1,5 +1,6 @@
 use serde::Deserialize;
 use std::env;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -40,6 +41,9 @@ pub struct Config {
     // Quotas - Default values
     pub guest_default_quiz_quota: i32,
     pub guest_quota_renewable: bool,
+
+    // mTLS
+    pub mtls_enabled: bool,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
@@ -98,7 +102,6 @@ impl Config {
                 .unwrap_or_else(|_| "7".to_string())
                 .parse()?,
 
-            // Bcrypt cost: 12 minimum (sécurité), 10 pour dev (performance)
             bcrypt_cost: env::var("BCRYPT_COST")
                 .unwrap_or_else(|_| "12".to_string())
                 .parse()?,
@@ -132,40 +135,156 @@ impl Config {
                 .unwrap_or_else(|_| "true".to_string())
                 .parse()
                 .unwrap_or(true),
+
+            mtls_enabled: env::var("MTLS_ENABLED")
+                .unwrap_or_else(|_| "false".to_string())
+                .parse()
+                .unwrap_or(false),
         })
     }
 
-    /// Retourne le JWT secret (pour génération tokens)
     pub fn jwt_secret(&self) -> &str {
         &self.jwt_secret
     }
 
-    /// Retourne le refresh secret (pour validation refresh tokens)
     pub fn jwt_refresh_secret(&self) -> &str {
         &self.jwt_refresh_secret
     }
 
-    /// Vérifie si on est en production
     pub fn is_production(&self) -> bool {
         self.environment == Environment::Production
     }
 
-    /// Vérifie si CAPTCHA est requis
     pub fn captcha_required(&self, failed_attempts: u32) -> bool {
         self.hcaptcha_enabled && failed_attempts >= self.login_attempts_before_captcha
     }
+
+    #[cfg(test)]
+    pub fn test_config() -> Self {
+        Self {
+            server_host: "localhost".to_string(),
+            server_port: 3001,
+            environment: Environment::Test,
+            database_url: "".to_string(),
+            jwt_secret: "test".to_string(),
+            jwt_refresh_secret: "test".to_string(),
+            jwt_access_expiration_minutes: 15,
+            jwt_refresh_expiration_days: 7,
+            bcrypt_cost: 4,
+            rate_limit_requests_per_minute: 60,
+            login_attempts_before_captcha: 3,
+            login_max_attempts_before_block: 10,
+            hcaptcha_secret: None,
+            hcaptcha_enabled: false,
+            device_fingerprint_max_guests: 3,
+            cors_origins: vec![],
+            guest_default_quiz_quota: 5,
+            guest_quota_renewable: true,
+            mtls_enabled: false,
+        }
+    }
 }
 
-// ✅ SÉCURITÉ : Masquer les secrets dans les logs
-impl std::fmt::Debug for Config {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Config")
-            .field("server_host", &self.server_host)
-            .field("server_port", &self.server_port)
-            .field("environment", &self.environment)
-            .field("jwt_secret", &"[REDACTED]")
-            .field("jwt_refresh_secret", &"[REDACTED]")
-            .field("hcaptcha_secret", &self.hcaptcha_secret.as_ref().map(|_| "[REDACTED]"))
-            .finish()
+
+// ============================================
+// MTLS Configuration
+// ============================================
+
+#[derive(Debug, Clone)]
+pub struct MtlsConfig {
+    /// Active ou désactive mTLS
+    pub enabled: bool,
+
+    /// Certificat du serveur (PEM)
+    pub server_cert_path: PathBuf,
+
+    /// Clé privée du serveur (PEM)
+    pub server_key_path: PathBuf,
+
+    /// CA racine pour valider les clients (PEM)
+    pub client_ca_cert_path: PathBuf,
+
+    /// Requiert obligatoirement un certificat client
+    pub require_client_cert: bool,
+}
+
+impl MtlsConfig {
+    /// Charge la configuration depuis les variables d'environnement
+    pub fn from_env() -> anyhow::Result<Self> {
+        let enabled = env::var("MTLS_ENABLED")
+            .unwrap_or_else(|_| "false".to_string())
+            .parse()
+            .unwrap_or(false);
+
+        if !enabled {
+            tracing::info!("mTLS is disabled");
+            return Ok(Self::disabled());
+        }
+
+        let server_cert_path = env::var("MTLS_SERVER_CERT")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| PathBuf::from("/etc/mtls/certs/server-cert.pem"));
+
+        let server_key_path = env::var("MTLS_SERVER_KEY")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| PathBuf::from("/etc/mtls/certs/server-key.pem"));
+
+        let client_ca_cert_path = env::var("MTLS_CLIENT_CA_CERT")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| PathBuf::from("/etc/mtls/certs/ca-cert.pem"));
+
+        let require_client_cert = env::var("MTLS_REQUIRE_CLIENT_CERT")
+            .unwrap_or_else(|_| "true".to_string())
+            .parse()
+            .unwrap_or(true);
+
+        Ok(Self {
+            enabled,
+            server_cert_path,
+            server_key_path,
+            client_ca_cert_path,
+            require_client_cert,
+        })
+    }
+
+    /// Configuration désactivée par défaut
+    fn disabled() -> Self {
+        Self {
+            enabled: false,
+            server_cert_path: PathBuf::new(),
+            server_key_path: PathBuf::new(),
+            client_ca_cert_path: PathBuf::new(),
+            require_client_cert: false,
+        }
+    }
+
+    /// Valide que les fichiers existent
+    pub fn validate(&self) -> anyhow::Result<()> {
+        if !self.enabled {
+            return Ok(());
+        }
+
+        if !self.server_cert_path.exists() {
+            anyhow::bail!(
+                "Server certificate not found: {}",
+                self.server_cert_path.display()
+            );
+        }
+
+        if !self.server_key_path.exists() {
+            anyhow::bail!(
+                "Server key not found: {}",
+                self.server_key_path.display()
+            );
+        }
+
+        if !self.client_ca_cert_path.exists() {
+            anyhow::bail!(
+                "Client CA certificate not found: {}",
+                self.client_ca_cert_path.display()
+            );
+        }
+
+        Ok(())
     }
 }

@@ -6,6 +6,7 @@ mod routes;
 
 use axum::http::header;
 use config::Config;
+use hyper_util::service::TowerToHyperService;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tower_http::{cors::CorsLayer, set_header::SetResponseHeaderLayer};
@@ -29,15 +30,13 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("Environment: {:?}", config.environment);
     tracing::info!("mTLS: {}", if config.mtls_enabled { "ENABLED" } else { "DISABLED" });
 
-    // ✅ NOUVEAU: Créer client HTTP avec ou sans mTLS
+    // Créer client HTTP avec ou sans mTLS
     let http_client = if config.mtls_enabled {
         tracing::info!("🔐 Initializing mTLS client for backend services...");
 
-        // Charger et valider configuration mTLS
         let mtls_config = mtls::MtlsConfig::from_env()?;
         mtls_config.validate()?;
 
-        // Créer client avec mTLS (pour appeler les services backend)
         let max_timeout = config.auth_timeout
             .max(config.quiz_timeout)
             .max(config.subscription_timeout)
@@ -60,47 +59,63 @@ async fn main() -> anyhow::Result<()> {
     // Créer ServiceProxy avec le client configuré
     let proxy = proxy::ServiceProxy::new(config.clone(), http_client);
 
-    // Routes avec CORS et middleware
-    let app = routes::create_router(Arc::new(config.clone()))
+    // Routes avec CORS
+    let app = routes::create_router(Arc::new(proxy))
         .layer(CorsLayer::permissive())
         .layer(SetResponseHeaderLayer::if_not_present(
             header::CONTENT_TYPE,
             header::HeaderValue::from_static("application/json; charset=utf-8"),
-        ))
-        .with_state(Arc::new(proxy));
+        ));
 
-    let addr = format!("0.0.0.0:{}", config.port);
+    let addr: SocketAddr = format!("0.0.0.0:{}", config.port).parse()?;
 
-    // ✅ NOUVEAU: Démarrage conditionnel avec ou sans mTLS (serveur)
+    // Démarrage conditionnel avec ou sans mTLS
     if config.mtls_enabled {
-        tracing::info!("🔐 mTLS server mode enabled");
+        tracing::info!("🔐 mTLS mode enabled for API Gateway");
 
-        // Charger configuration mTLS serveur
         let mtls_config = mtls::MtlsConfig::from_env()?;
         mtls_config.validate()?;
 
-        // Créer configuration TLS serveur
-        let tls_config = mtls::create_mtls_server_config(&mtls_config).await?;
+        let tls_acceptor = mtls::create_mtls_acceptor(&mtls_config)?;
 
         tracing::info!("🚀 API Gateway (mTLS) listening on https://{}", addr);
-        tracing::info!("📍 Health: https://{}/health", addr);
 
-        // Serveur avec TLS
-        axum_server::bind_rustls(addr.parse()?, tls_config)
-            .serve(app.into_make_service())
-            .await?;
+        let listener = tokio::net::TcpListener::bind(addr).await?;
+
+        loop {
+            let (tcp_stream, remote_addr) = listener.accept().await?;
+            let tls_acceptor = tls_acceptor.clone();
+            let app = app.clone();
+
+            tokio::spawn(async move {
+                match tls_acceptor.accept(tcp_stream).await {
+                    Ok(tls_stream) => {
+                        let hyper_service = TowerToHyperService::new(app);
+
+                        if let Err(e) = hyper_util::server::conn::auto::Builder::new(
+                            hyper_util::rt::TokioExecutor::new()
+                        )
+                            .serve_connection(
+                                hyper_util::rt::TokioIo::new(tls_stream),
+                                hyper_service
+                            )
+                            .await
+                        {
+                            tracing::error!("Error serving connection from {}: {}", remote_addr, e);
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!("TLS handshake failed from {}: {}", remote_addr, e);
+                    }
+                }
+            });
+        }
     } else {
         tracing::info!("🔓 Running without mTLS (HTTP mode)");
         tracing::info!("🚀 API Gateway listening on http://{}", addr);
-        tracing::info!("📍 Health: http://{}/health", addr);
 
-        // Serveur sans TLS (mode actuel)
         let listener = tokio::net::TcpListener::bind(&addr).await?;
-        axum::serve(
-            listener,
-            app.into_make_service_with_connect_info::<SocketAddr>(),
-        )
-            .await?;
+        axum::serve(listener, app).await?;
     }
 
     Ok(())

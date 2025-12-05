@@ -94,10 +94,9 @@ impl From<User> for UserResponse {
     }
 }
 
-/// ✅ SÉCURITÉ : Seuls les champs modifiables par l'utilisateur
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize, Serialize, Validate)]
 pub struct UpdateUserRequest {
-    #[validate(length(min = 1, max = 100), custom = "validate_no_html")]
+    #[validate(length(min = 1, max = 100), custom(function = "validate_no_html"))]
     pub display_name: Option<String>,
 
     #[validate(url, length(max = 500))]

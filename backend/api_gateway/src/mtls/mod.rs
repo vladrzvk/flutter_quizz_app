@@ -1,7 +1,7 @@
-pub mod client;
-pub mod config;
-pub mod server;
+mod config;
+mod server;
+mod client;
 
-pub use client::{create_mtls_client, MtlsClientError};
 pub use config::MtlsConfig;
-pub use server::{create_mtls_server_config, MtlsServerError};
+pub use server::create_mtls_acceptor;
+pub use client::{create_standard_client, create_mtls_client};

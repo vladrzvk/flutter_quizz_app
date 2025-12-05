@@ -1,7 +1,8 @@
-use reqwest::Certificate;
-use reqwest::Identity;
-use std::fs;
-use std::io;
+use rustls::{ClientConfig, RootCertStore};
+use rustls_pemfile::certs;
+use std::fs::File;
+use std::io::{self, BufReader};
+use std::sync::Arc;
 use std::time::Duration;
 use thiserror::Error;
 
@@ -12,73 +13,82 @@ pub enum MtlsClientError {
     #[error("Failed to read certificate file: {0}")]
     CertRead(#[from] io::Error),
 
-    #[error("Failed to parse certificate: {0}")]
+    #[error("Failed to parse certificates: {0}")]
     CertParse(String),
 
-    #[error("Failed to create reqwest client: {0}")]
+    #[error("Failed to configure TLS: {0}")]
+    TlsConfig(String),
+
+    #[error("Failed to build HTTP client: {0}")]
     ClientBuild(#[from] reqwest::Error),
 }
 
-/// Crée un client reqwest configuré avec mTLS pour appeler les services backend
-pub fn create_mtls_client(
-    mtls_config: &MtlsConfig,
-    timeout_secs: u64,
-) -> Result<reqwest::Client, MtlsClientError> {
-    tracing::info!("🔐 Creating mTLS client for backend services...");
+/// Crée un client HTTP standard (sans mTLS)
+pub fn create_standard_client(timeout_secs: u64) -> Result<reqwest::Client, MtlsClientError> {
+    tracing::info!("🔓 Creating standard HTTP client (no mTLS)");
 
-    // Lire le certificat client du Gateway
-    let gateway_cert_pem = fs::read(&mtls_config.gateway_client_cert_path)?;
-    let gateway_key_pem = fs::read(&mtls_config.gateway_client_key_path)?;
-
-    // Combiner cert + key en PEM
-    let mut identity_pem = Vec::new();
-    identity_pem.extend_from_slice(&gateway_cert_pem);
-    identity_pem.extend_from_slice(&gateway_key_pem);
-
-    // Créer l'identité client (certificat + clé privée)
-    let identity = Identity::from_pem(&identity_pem)
-        .map_err(|e| MtlsClientError::CertParse(e.to_string()))?;
-
-    tracing::debug!(
-        "Loaded gateway client certificate from: {}",
-        mtls_config.gateway_client_cert_path.display()
-    );
-    tracing::debug!(
-        "Loaded gateway client key from: {}",
-        mtls_config.gateway_client_key_path.display()
-    );
-
-    // Lire le certificat CA pour valider les services backend
-    let backend_ca_cert_pem = fs::read(&mtls_config.backend_ca_cert_path)?;
-    let backend_ca_cert = Certificate::from_pem(&backend_ca_cert_pem)
-        .map_err(|e| MtlsClientError::CertParse(e.to_string()))?;
-
-    tracing::debug!(
-        "Loaded backend CA certificate from: {}",
-        mtls_config.backend_ca_cert_path.display()
-    );
-
-    // Construire le client reqwest avec mTLS
     let client = reqwest::Client::builder()
-        .identity(identity)                     // Certificat client du Gateway
-        .add_root_certificate(backend_ca_cert)  // CA pour valider les backends
         .timeout(Duration::from_secs(timeout_secs))
-        .danger_accept_invalid_certs(false)     // Toujours valider les certificats
-        .use_rustls_tls()                       // Utiliser rustls comme backend TLS
         .build()?;
 
-    tracing::info!("✅ mTLS client configured successfully");
+    tracing::info!("✅ Standard HTTP client created");
 
     Ok(client)
 }
 
-/// Créer un client HTTP standard (sans mTLS) pour le mode non-sécurisé
-pub fn create_standard_client(timeout_secs: u64) -> Result<reqwest::Client, MtlsClientError> {
-    tracing::info!("Creating standard HTTP client (no mTLS)");
+/// Crée un client HTTP avec mTLS
+pub fn create_mtls_client(
+    mtls_config: &MtlsConfig,
+    timeout_secs: u64,
+) -> Result<reqwest::Client, MtlsClientError> {
+    tracing::info!("🔐 Creating mTLS HTTP client...");
 
+    // Charger le certificat CA pour valider les serveurs
+    let ca_file = File::open(&mtls_config.client_ca_cert_path)?;
+    let mut ca_reader = BufReader::new(ca_file);
+
+    let mut root_store = RootCertStore::empty();
+    for cert in certs(&mut ca_reader) {
+        let cert = cert.map_err(|e| MtlsClientError::CertParse(e.to_string()))?;
+        root_store.add(cert)
+            .map_err(|e| MtlsClientError::CertParse(e.to_string()))?;
+    }
+
+    tracing::debug!(
+        "Loaded CA certificate from: {}",
+        mtls_config.client_ca_cert_path.display()
+    );
+
+    // Charger le certificat client
+    let cert_file = File::open(&mtls_config.server_cert_path)?;
+    let mut cert_reader = BufReader::new(cert_file);
+    let certs: Vec<_> = certs(&mut cert_reader)
+        .collect::<Result<_, _>>()
+        .map_err(|e| MtlsClientError::CertParse(e.to_string()))?;
+
+    // Charger la clé privée client
+    let key_file = File::open(&mtls_config.server_key_path)?;
+    let mut key_reader = BufReader::new(key_file);
+    let key = rustls_pemfile::rsa_private_keys(&mut key_reader)
+        .next()
+        .ok_or_else(|| MtlsClientError::CertParse("No private key found".to_string()))?
+        .map_err(|e| MtlsClientError::CertParse(e.to_string()))?;
+
+    let key_der = rustls::pki_types::PrivateKeyDer::Pkcs1(key);
+
+    // Configuration TLS client
+    let tls_config = ClientConfig::builder()
+        .with_root_certificates(root_store)
+        .with_client_auth_cert(certs, key_der)
+        .map_err(|e| MtlsClientError::TlsConfig(e.to_string()))?;
+
+    // Client reqwest avec TLS
     let client = reqwest::Client::builder()
+        .use_preconfigured_tls(tls_config)
         .timeout(Duration::from_secs(timeout_secs))
         .build()?;
+
+    tracing::info!("✅ mTLS HTTP client created");
 
     Ok(client)
 }

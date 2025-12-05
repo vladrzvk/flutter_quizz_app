@@ -2,6 +2,7 @@ use tokio::task;
 
 use crate::error::AuthError;
 
+#[derive(Clone)]
 pub struct PasswordService {
     cost: u32,
 }

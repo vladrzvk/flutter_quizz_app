@@ -1,7 +1,10 @@
-use axum_server::tls_rustls::RustlsConfig;
-use std::fs;
-use std::io;
+use rustls::{ServerConfig, RootCertStore};
+use rustls_pemfile::{certs, rsa_private_keys};
+use std::fs::File;
+use std::io::{self, BufReader};
+use std::sync::Arc;
 use thiserror::Error;
+use tokio_rustls::TlsAcceptor;
 
 use super::MtlsConfig;
 
@@ -15,45 +18,70 @@ pub enum MtlsServerError {
 
     #[error("Failed to configure TLS: {0}")]
     TlsConfig(String),
+
+    #[error("No private key found")]
+    NoPrivateKey,
 }
 
-/// Crée la configuration Rustls pour le serveur API Gateway avec mTLS
-pub async fn create_mtls_server_config(
+/// Crée un TlsAcceptor configuré pour mTLS
+pub fn create_mtls_acceptor(
     mtls_config: &MtlsConfig,
-) -> Result<RustlsConfig, MtlsServerError> {
-    tracing::info!("🔐 Configuring mTLS server for API Gateway...");
+) -> Result<TlsAcceptor, MtlsServerError> {
+    tracing::info!("🔐 Configuring mTLS server...");
 
-    // Lire le certificat serveur
-    let server_cert = fs::read(&mtls_config.server_cert_path)?;
-    tracing::debug!(
-        "Loaded server certificate from: {}",
-        mtls_config.server_cert_path.display()
-    );
+    let cert_file = File::open(&mtls_config.server_cert_path)?;
+    let mut cert_reader = BufReader::new(cert_file);
+    let cert_chain: Vec<_> = certs(&mut cert_reader)
+        .collect::<Result<_, _>>()
+        .map_err(|e| MtlsServerError::CertParse(e.to_string()))?;
 
-    // Lire la clé privée serveur
-    let server_key = fs::read(&mtls_config.server_key_path)?;
-    tracing::debug!(
-        "Loaded server key from: {}",
-        mtls_config.server_key_path.display()
-    );
+    if cert_chain.is_empty() {
+        return Err(MtlsServerError::CertParse(
+            "No certificates found in server cert file".to_string(),
+        ));
+    }
 
-    // Créer la configuration Rustls
-    let rustls_config = RustlsConfig::from_pem(server_cert, server_key)
-        .await
-        .map_err(|e| MtlsServerError::TlsConfig(e.to_string()))?;
+    let key_file = File::open(&mtls_config.server_key_path)?;
+    let mut key_reader = BufReader::new(key_file);
 
-    // Note: Pour validation certificat client (mTLS complet),
-    // il faudrait configurer ClientCertVerifier avec le CA client
-    // Cela nécessite une configuration Rustls plus bas niveau
+    let private_key = rsa_private_keys(&mut key_reader)
+        .next()
+        .ok_or(MtlsServerError::NoPrivateKey)?
+        .map_err(|e| MtlsServerError::CertParse(e.to_string()))?;
 
-    tracing::info!(
-        "✅ mTLS server configured (client validation: {})",
-        if mtls_config.require_client_cert {
-            "REQUIRED"
-        } else {
-            "OPTIONAL"
+    let private_key_der = rustls::pki_types::PrivateKeyDer::Pkcs1(private_key);
+
+    let config = if mtls_config.require_client_cert {
+        tracing::info!("Client certificate validation: REQUIRED");
+
+        let ca_file = File::open(&mtls_config.client_ca_cert_path)?;
+        let mut ca_reader = BufReader::new(ca_file);
+
+        let mut root_store = RootCertStore::empty();
+        for cert in certs(&mut ca_reader) {
+            let cert = cert.map_err(|e| MtlsServerError::CertParse(e.to_string()))?;
+            root_store.add(cert)
+                .map_err(|e| MtlsServerError::CertParse(e.to_string()))?;
         }
-    );
 
-    Ok(rustls_config)
+        ServerConfig::builder()
+            .with_client_cert_verifier(
+                rustls::server::WebPkiClientVerifier::builder(Arc::new(root_store))
+                    .build()
+                    .map_err(|e| MtlsServerError::TlsConfig(e.to_string()))?
+            )
+            .with_single_cert(cert_chain, private_key_der)
+            .map_err(|e| MtlsServerError::TlsConfig(e.to_string()))?
+    } else {
+        tracing::info!("Client certificate validation: OPTIONAL");
+
+        ServerConfig::builder()
+            .with_no_client_auth()
+            .with_single_cert(cert_chain, private_key_der)
+            .map_err(|e| MtlsServerError::TlsConfig(e.to_string()))?
+    };
+
+    tracing::info!("✅ mTLS server configured successfully");
+
+    Ok(TlsAcceptor::from(Arc::new(config)))
 }

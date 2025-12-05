@@ -7,7 +7,7 @@ edition = "2021"
 # Workspace dependencies
 tokio = { workspace = true }
 axum = { workspace = true }
-tower = { workspace = true }
+tower = { workspace = true, features = ["util"] }
 tower-http = { workspace = true, features = ["set-header"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -29,6 +29,7 @@ hyper-util = { version = "0.1", features = ["tokio", "server", "server-auto"] }
 
 # Local dependency
 shared = { path = "../shared" }
+hyper = "1.8.1"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["test-util"] }

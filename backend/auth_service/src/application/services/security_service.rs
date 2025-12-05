@@ -7,6 +7,7 @@ use crate::infrastructure::repositories::{
     LoginAttemptRepository, DeviceFingerprintRepository,
 };
 
+#[derive(Clone)]
 pub struct SecurityService {
     config: Config,
 }
@@ -238,34 +239,12 @@ mod tests {
 
     #[test]
     fn test_sanitize_display_name() {
-        let config = Config {
-            server_host: "localhost".to_string(),
-            server_port: 3001,
-            environment: crate::config::Environment::Test,
-            database_url: "".to_string(),
-            jwt_secret: "test".to_string(),
-            jwt_refresh_secret: "test".to_string(),
-            jwt_access_expiration_minutes: 15,
-            jwt_refresh_expiration_days: 7,
-            bcrypt_cost: 4,
-            rate_limit_requests_per_minute: 60,
-            login_attempts_before_captcha: 3,
-            login_max_attempts_before_block: 10,
-            hcaptcha_secret: None,
-            hcaptcha_enabled: false,
-            device_fingerprint_max_guests: 3,
-            cors_origins: vec![],
-            guest_default_quiz_quota: 5,
-            guest_quota_renewable: true,
-        };
-
-        let service = SecurityService::new(config);
-
-        let result = service.sanitize_display_name("<b>John</b>");
+        // Pas besoin de config pour tester une fonction statique
+        let result = SecurityService::sanitize_display_name("<b>John</b>");
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "<b>John</b>"); // <b> est autorisé par ammonia
 
-        let result = service.sanitize_display_name("<scripts>alert('xss')</scripts>");
+        let result = SecurityService::sanitize_display_name("<scripts>alert('xss')</scripts>");
         assert!(result.is_ok());
         let sanitized = result.unwrap();
         assert!(!sanitized.contains("<scripts>"));

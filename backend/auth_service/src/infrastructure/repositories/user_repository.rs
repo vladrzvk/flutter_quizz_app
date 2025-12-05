@@ -300,10 +300,9 @@ impl UserRepository {
         search: Option<&str>,
     ) -> Result<Vec<User>, AuthError> {
         let mut query = "SELECT * FROM users WHERE deleted_at IS NULL".to_string();
-        let mut conditions = Vec::new();
-
+        let mut conditions = Vec::<String>::new();
         if status.is_some() {
-            conditions.push("status = $1");
+            conditions.push("status = $1".parse().unwrap());
         }
         if is_guest.is_some() {
             conditions.push(format!(
@@ -354,10 +353,10 @@ impl UserRepository {
         search: Option<&str>,
     ) -> Result<i64, AuthError> {
         let mut query = "SELECT COUNT(*) FROM users WHERE deleted_at IS NULL".to_string();
-        let mut conditions = Vec::new();
+        let mut conditions = Vec::<String>::new();
 
         if status.is_some() {
-            conditions.push("status = $1");
+            conditions.push("status = $1".parse().unwrap());
         }
         if is_guest.is_some() {
             conditions.push(format!(

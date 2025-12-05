@@ -3,15 +3,15 @@ mod dto;
 mod handlers;
 mod json_utf8;
 mod models;
-mod mtls; // ✅ NOUVEAU
+mod mtls;
 mod plugins;
 mod repositories;
 mod routes;
 mod services;
 
 use axum::http::header;
-// use hyper_util::server;
 use config::Config;
+use hyper_util::service::TowerToHyperService;
 use plugins::{GeographyPlugin, PluginRegistry};
 use sqlx::PgPool;
 use std::net::SocketAddr;
@@ -72,7 +72,7 @@ async fn main() -> anyhow::Result<()> {
     let addr: SocketAddr = format!("{}:{}", config.server_host, config.server_port)
         .parse()?;
 
-    // ✅ NOUVEAU: Démarrage conditionnel avec ou sans mTLS
+    // Démarrage conditionnel avec ou sans mTLS
     if config.mtls_enabled {
         tracing::info!("🔐 mTLS mode enabled");
 
@@ -99,17 +99,15 @@ async fn main() -> anyhow::Result<()> {
             tokio::spawn(async move {
                 match tls_acceptor.accept(tcp_stream).await {
                     Ok(tls_stream) => {
-                        let tower_service = tower::ServiceExt::map_response(
-                            app,
-                            |response| response
-                        );
+                        // Convertir Router en service hyper compatible
+                        let hyper_service = TowerToHyperService::new(app);
 
                         if let Err(e) = hyper_util::server::conn::auto::Builder::new(
                             hyper_util::rt::TokioExecutor::new()
                         )
                             .serve_connection(
                                 hyper_util::rt::TokioIo::new(tls_stream),
-                                tower_service
+                                hyper_service
                             )
                             .await
                         {

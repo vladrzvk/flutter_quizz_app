@@ -12,6 +12,8 @@ use crate::infrastructure::repositories::{
 };
 use super::{PasswordService, SecurityService};
 
+
+#[derive(Clone)]
 pub struct UserService {
     password_service: PasswordService,
     security_service: SecurityService,
@@ -56,7 +58,7 @@ impl UserService {
         let display_name = request
             .display_name
             .as_ref()
-            .map(|name| self.security_service.sanitize_display_name(name))
+            .map(|name| SecurityService::sanitize_display_name(name))
             .transpose()?;
 
         // 2. Mettre à jour le profil
@@ -234,7 +236,7 @@ impl UserService {
             .into_iter()
             .map(|q| QuotaResponse {
                 id: q.id,
-                quota_type: q.quota_type,
+                quota_type: q.quota_type.clone(),
                 max_allowed: q.max_allowed,
                 current_usage: q.current_usage,
                 remaining: q.remaining(),
@@ -258,7 +260,7 @@ impl UserService {
 
         Ok(QuotaResponse {
             id: quota.id,
-            quota_type: quota.quota_type,
+            quota_type: quota.quota_type.clone(),
             max_allowed: quota.max_allowed,
             current_usage: quota.current_usage,
             remaining: quota.remaining(),

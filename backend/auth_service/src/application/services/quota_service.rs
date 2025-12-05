@@ -8,6 +8,7 @@ use crate::domain::{
 use crate::error::AuthError;
 use crate::infrastructure::repositories::{QuotaRepository, AuditLogRepository};
 
+#[derive(Clone, Copy)]
 pub struct QuotaService;
 
 impl QuotaService {
@@ -123,7 +124,7 @@ impl QuotaService {
             success: true,
             quota: QuotaResponse {
                 id: renewed_quota.id,
-                quota_type: renewed_quota.quota_type,
+                quota_type: renewed_quota.quota_type.clone(),
                 max_allowed: renewed_quota.max_allowed,
                 current_usage: renewed_quota.current_usage,
                 remaining: renewed_quota.remaining(),
@@ -145,7 +146,7 @@ impl QuotaService {
 
         Ok(QuotaResponse {
             id: quota.id,
-            quota_type: quota.quota_type,
+            quota_type: quota.quota_type.clone(),
             max_allowed: quota.max_allowed,
             current_usage: quota.current_usage,
             remaining: quota.remaining(),

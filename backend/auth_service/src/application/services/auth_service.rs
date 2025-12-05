@@ -14,6 +14,7 @@ use crate::infrastructure::repositories::{
 };
 use super::{JwtService, PasswordService, SecurityService};
 
+#[derive(Clone)]
 pub struct AuthService {
     jwt_service: JwtService,
     password_service: PasswordService,
@@ -64,7 +65,7 @@ impl AuthService {
         let display_name = request
             .display_name
             .as_ref()
-            .map(|name| self.security_service.sanitize_display_name(name))
+            .map(|name| SecurityService::sanitize_display_name(name))
             .transpose()?;
 
         // 5. Créer l'utilisateur

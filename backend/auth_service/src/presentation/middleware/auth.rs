@@ -12,12 +12,12 @@ use crate::error::AuthError;
 use crate::infrastructure::repositories::SessionRepository;
 
 /// Extension pour le contexte de requête
+#[derive(Clone)]
 pub struct AuthContext(pub RequestContext);
 
 /// ✅ SÉCURITÉ : Middleware d'authentification JWT
 pub async fn auth_middleware(
-    State(pool): State<PgPool>,
-    State(jwt_service): State<JwtService>,
+    State((pool, jwt_service)): State<(PgPool, JwtService)>,
     mut request: Request,
     next: Next,
 ) -> Result<Response, AuthError> {

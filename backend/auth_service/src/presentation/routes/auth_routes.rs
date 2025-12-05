@@ -1,17 +1,18 @@
 use axum::{
-    extract::{Request, State},
-    http::{header, StatusCode},
-    response::{IntoResponse, Response},
+    extract::{State, ConnectInfo, Extension},
+    http::{header, StatusCode, HeaderMap},
+    response::IntoResponse,
     Json, Router,
     routing::post,
 };
 use serde_json::json;
 use sqlx::PgPool;
 use validator::Validate;
+use std::net::SocketAddr;
 
 use crate::application::AuthService;
 use crate::domain::{
-    AuthResponse, LoginRequest, RegisterRequest, RefreshTokenRequest, CreateGuestRequest,
+    AuthResponse, LoginRequest, RegisterRequest, CreateGuestRequest,
 };
 use crate::error::AuthError;
 use crate::presentation::middleware::AuthContext;
@@ -34,14 +35,14 @@ pub fn auth_routes(pool: PgPool, auth_service: AuthService) -> Router {
 /// POST /auth/register
 async fn register(
     State((pool, auth_service)): State<(PgPool, AuthService)>,
-    request: Request,
+    headers: HeaderMap,
     Json(payload): Json<RegisterRequest>,
 ) -> Result<Json<AuthResponse>, AuthError> {
     // Validation
     payload.validate()?;
 
     // Extraire IP
-    let ip_address = extract_ip_address(&request);
+    let ip_address = extract_ip_from_headers(&headers);
 
     // Register
     let response = auth_service
@@ -58,15 +59,15 @@ async fn register(
 /// POST /auth/login
 async fn login(
     State((pool, auth_service)): State<(PgPool, AuthService)>,
-    request: Request,
+    headers: HeaderMap,
     Json(payload): Json<LoginRequest>,
 ) -> Result<impl IntoResponse, AuthError> {
     // Validation
     payload.validate()?;
 
     // Extraire metadata
-    let ip_address = extract_ip_address(&request);
-    let user_agent = extract_user_agent(&request);
+    let ip_address = extract_ip_from_headers(&headers);
+    let user_agent = extract_user_agent(&headers);
 
     // Login
     let response = auth_service
@@ -99,14 +100,14 @@ async fn login(
 /// POST /auth/refresh
 async fn refresh_token(
     State((pool, auth_service)): State<(PgPool, AuthService)>,
-    request: Request,
+    headers: HeaderMap,
 ) -> Result<impl IntoResponse, AuthError> {
-    // Extraire le refresh token depuis cookie ou body
-    let refresh_token = extract_refresh_token(&request)?;
+    // Extraire le refresh token depuis cookie
+    let refresh_token = extract_refresh_token_from_headers(&headers)?;
 
     // Extraire metadata
-    let ip_address = extract_ip_address(&request);
-    let user_agent = extract_user_agent(&request);
+    let ip_address = extract_ip_from_headers(&headers);
+    let user_agent = extract_user_agent(&headers);
 
     // Refresh
     let response = auth_service
@@ -139,18 +140,13 @@ async fn refresh_token(
 /// POST /auth/logout
 async fn logout(
     State((pool, auth_service)): State<(PgPool, AuthService)>,
-    request: Request,
+    Extension(auth_context): Extension<AuthContext>,
+    headers: HeaderMap,
 ) -> Result<impl IntoResponse, AuthError> {
-    // Extraire le contexte auth
-    let context = request
-        .extensions()
-        .get::<AuthContext>()
-        .ok_or(AuthError::InvalidToken)?;
-
     // Extraire access token
-    let access_token = extract_access_token(&request)?;
+    let access_token = extract_access_token_from_headers(&headers)?;
 
-    let ip_address = extract_ip_address(&request);
+    let ip_address = extract_ip_from_headers(&headers);
 
     // Logout
     auth_service
@@ -178,17 +174,13 @@ async fn logout(
 /// POST /auth/logout-all
 async fn logout_all(
     State((pool, auth_service)): State<(PgPool, AuthService)>,
-    request: Request,
+    Extension(auth_context): Extension<AuthContext>,
+    headers: HeaderMap,
 ) -> Result<impl IntoResponse, AuthError> {
-    let context = request
-        .extensions()
-        .get::<AuthContext>()
-        .ok_or(AuthError::InvalidToken)?;
-
-    let ip_address = extract_ip_address(&request);
+    let ip_address = extract_ip_from_headers(&headers);
 
     let count = auth_service
-        .logout_all(&pool, context.0.user_id, ip_address.as_deref())
+        .logout_all(&pool, auth_context.0.user_id, ip_address.as_deref())
         .await?;
 
     let clear_access = clear_cookie("access_token");
@@ -214,10 +206,10 @@ async fn logout_all(
 /// POST /auth/guest
 async fn create_guest(
     State((pool, auth_service)): State<(PgPool, AuthService)>,
-    request: Request,
+    headers: HeaderMap,
     Json(payload): Json<CreateGuestRequest>,
 ) -> Result<impl IntoResponse, AuthError> {
-    let ip_address = extract_ip_address(&request);
+    let ip_address = extract_ip_from_headers(&headers);
 
     let response = auth_service
         .create_guest(&pool, payload, ip_address.as_deref())
@@ -241,14 +233,14 @@ async fn create_guest(
 // HELPERS
 // ============================================
 
-fn extract_ip_address(request: &Request) -> Option<String> {
-    if let Some(forwarded) = request.headers().get("X-Forwarded-For") {
+fn extract_ip_from_headers(headers: &HeaderMap) -> Option<String> {
+    if let Some(forwarded) = headers.get("X-Forwarded-For") {
         if let Ok(forwarded_str) = forwarded.to_str() {
             return Some(forwarded_str.split(',').next()?.trim().to_string());
         }
     }
 
-    if let Some(real_ip) = request.headers().get("X-Real-IP") {
+    if let Some(real_ip) = headers.get("X-Real-IP") {
         if let Ok(ip_str) = real_ip.to_str() {
             return Some(ip_str.to_string());
         }
@@ -257,17 +249,16 @@ fn extract_ip_address(request: &Request) -> Option<String> {
     None
 }
 
-fn extract_user_agent(request: &Request) -> Option<String> {
-    request
-        .headers()
+fn extract_user_agent(headers: &HeaderMap) -> Option<String> {
+    headers
         .get(header::USER_AGENT)
         .and_then(|h| h.to_str().ok())
         .map(|s| s.to_string())
 }
 
-fn extract_access_token(request: &Request) -> Result<String, AuthError> {
+fn extract_access_token_from_headers(headers: &HeaderMap) -> Result<String, AuthError> {
     // Cookie priority
-    if let Some(cookie_header) = request.headers().get(header::COOKIE) {
+    if let Some(cookie_header) = headers.get(header::COOKIE) {
         if let Ok(cookie_str) = cookie_header.to_str() {
             for cookie in cookie_str.split(';') {
                 let parts: Vec<&str> = cookie.trim().splitn(2, '=').collect();
@@ -279,7 +270,7 @@ fn extract_access_token(request: &Request) -> Result<String, AuthError> {
     }
 
     // Fallback: Authorization header
-    if let Some(auth_header) = request.headers().get(header::AUTHORIZATION) {
+    if let Some(auth_header) = headers.get(header::AUTHORIZATION) {
         if let Ok(auth_str) = auth_header.to_str() {
             if let Some(token) = auth_str.strip_prefix("Bearer ") {
                 return Ok(token.to_string());
@@ -290,9 +281,9 @@ fn extract_access_token(request: &Request) -> Result<String, AuthError> {
     Err(AuthError::InvalidToken)
 }
 
-fn extract_refresh_token(request: &Request) -> Result<String, AuthError> {
+fn extract_refresh_token_from_headers(headers: &HeaderMap) -> Result<String, AuthError> {
     // Cookie priority
-    if let Some(cookie_header) = request.headers().get(header::COOKIE) {
+    if let Some(cookie_header) = headers.get(header::COOKIE) {
         if let Ok(cookie_str) = cookie_header.to_str() {
             for cookie in cookie_str.split(';') {
                 let parts: Vec<&str> = cookie.trim().splitn(2, '=').collect();
