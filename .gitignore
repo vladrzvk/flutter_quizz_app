@@ -124,8 +124,9 @@ app.*.symbols
 
 /exercice/*
 .actrc/
-backend/.env
-backend/.env.test
+/backend/.env
+/backend/.env.test
 /frontend/.env
 /k8s/kind/setup-kind.ps1
 scripts/certs/generated/
+/backend/target/

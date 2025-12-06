@@ -96,59 +96,58 @@ services:
   # ============================================
 
   auth-service:
-      build:
-        context: .
-        dockerfile: backend/auth_service/Dockerfile
-        args:
-          SERVICE_NAME: auth_service
-      container_name: auth_service-service
-      environment:
-        # Service config
-        PORT: 3001
-        RUST_LOG: info
+    build:
+      context: .
+      dockerfile: backend/auth_service/Dockerfile
+      args:
+        SERVICE_NAME: auth_service
+    container_name: auth_service-service
+    environment:
+      # Service config
+      PORT: 3001
+      RUST_LOG: ${AUTH_RUST_LOG:-info}
 
-        # Database
-        DATABASE_URL: postgres://auth_user:${AUTH_DB_PASSWORD:-auth_secret_dev}@postgres-auth_service:5432/auth_db
+      # Database
+      DATABASE_URL: postgres://auth_user:${AUTH_DB_PASSWORD:-auth_secret_dev}@postgres-auth_service:5432/auth_db
 
-        # mTLS Configuration (serveur)
-        MTLS_ENABLED: "true"
-        MTLS_CERT_PATH: "/etc/tls/tls.crt"
-        MTLS_KEY_PATH: "/etc/tls/tls.key"
-        MTLS_CA_PATH: "/etc/tls/ca.crt"
-        MTLS_VERIFY_CLIENT: "true"
-        MTLS_STRICT_MODE: "true"
-        MTLS_ALLOWED_CNS: "gateway"
+      # mTLS Configuration (SERVEUR uniquement - reçoit des connexions)
+      MTLS_ENABLED: "true"
+      MTLS_REQUIRE_CLIENT_CERT: "true"
+      MTLS_SERVER_CERT: /etc/mtls/certs/server.crt
+      MTLS_SERVER_KEY: /etc/mtls/certs/server.key
+      MTLS_CLIENT_CA_CERT: /etc/mtls/certs/ca.crt
 
-        # JWT
-        JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_in_production}
-        JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev_refresh_secret_change_in_production}
-        JWT_EXPIRATION_HOURS: 168
-        JWT_REFRESH_EXPIRATION_HOURS: 720
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_in_production}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev_refresh_secret_change_in_production}
+      JWT_EXPIRATION_HOURS: ${JWT_EXPIRATION_HOURS:-168}
+      JWT_REFRESH_EXPIRATION_HOURS: ${JWT_REFRESH_EXPIRATION_HOURS:-720}
 
-        # OAuth
-        GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-        GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-        APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-}
-        APPLE_TEAM_ID: ${APPLE_TEAM_ID:-}
+      # OAuth
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-}
+      APPLE_TEAM_ID: ${APPLE_TEAM_ID:-}
 
-      volumes:
-        - ./scripts/certs/generated/auth-service.crt:/etc/tls/tls.crt:ro
-        - ./scripts/certs/generated/auth-service.key:/etc/tls/tls.key:ro
-        - ./scripts/certs/generated/ca.crt:/etc/tls/ca.crt:ro
-      ports:
-        - "3001:3001"
-      depends_on:
-        postgres-auth:
-          condition: service_healthy
-      networks:
-        - backend-network
-      healthcheck:
-        test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
-        interval: 30s
-        timeout: 10s
-        retries: 3
-        start_period: 40s
-      restart: unless-stopped
+    volumes:
+      # Montage certificats mTLS (SERVEUR)
+      - ./scripts/certs/generated/auth-service-server.crt:/etc/mtls/certs/server.crt:ro
+      - ./scripts/certs/generated/auth-service-server.key:/etc/mtls/certs/server.key:ro
+      - ./scripts/certs/generated/ca.crt:/etc/mtls/certs/ca.crt:ro
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
+    networks:
+      - backend-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-k", "https://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
 
   #  subscription-service:
   #    build:
@@ -159,7 +158,7 @@ services:
   #    container_name: subscription_service-service
   #    environment:
   #      PORT: 3002
-  #      RUST_LOG: info
+  #      RUST_LOG: ${SUBSCRIPTION_RUST_LOG:-info}
   #      DATABASE_URL: postgres://subscription_user:${SUBSCRIPTION_DB_PASSWORD:-subscription_secret_dev}@postgres-subscription_service:5432/subscription_db
   #      AUTH_SERVICE_URL: https://auth-service:3001
   #
@@ -196,7 +195,7 @@ services:
   #    container_name: ads_service-service
   #    environment:
   #      PORT: 3004
-  #      RUST_LOG: info
+  #      RUST_LOG: ${ADS_RUST_LOG:-info}
   #      DATABASE_URL: postgres://ads_user:${ADS_DB_PASSWORD:-ads_secret_dev}@postgres-ads_service:5432/ads_db
   #      AUTH_SERVICE_URL: https://auth-service:3001
   #      SUBSCRIPTION_SERVICE_URL: http://subscription-service:3002
@@ -230,39 +229,49 @@ services:
     environment:
       # Service config
       PORT: 8080
-      RUST_LOG: info
+      RUST_LOG: ${QUIZ_RUST_LOG:-info}
 
       # Database
       DATABASE_URL: postgres://quiz_user:${QUIZ_DB_PASSWORD:-quiz_secret_dev}@postgres-quiz:5432/quiz_db
 
-      # mTLS Configuration (serveur)
+      # mTLS Configuration (SERVEUR - reçoit du gateway)
       MTLS_ENABLED: "true"
-      MTLS_CERT_PATH: "/etc/tls/tls.crt"
-      MTLS_KEY_PATH: "/etc/tls/tls.key"
-      MTLS_CA_PATH: "/etc/tls/ca.crt"
-      MTLS_VERIFY_CLIENT: "true"
-      MTLS_STRICT_MODE: "true"
-      MTLS_ALLOWED_CNS: "gateway"
+      MTLS_REQUIRE_CLIENT_CERT: "true"
+      MTLS_SERVER_CERT: /etc/mtls/certs/server.crt
+      MTLS_SERVER_KEY: /etc/mtls/certs/server.key
+      MTLS_CLIENT_CA_CERT: /etc/mtls/certs/ca.crt
 
-      # Service URLs (non utilises directement mais gardes pour compatibilite)
+      # mTLS Configuration (CLIENT - appelle auth-service)
+      MTLS_CLIENT_CERT: /etc/mtls/certs/client.crt
+      MTLS_CLIENT_KEY: /etc/mtls/certs/client.key
+      MTLS_SERVER_CA_CERT: /etc/mtls/certs/ca.crt
+
+      # Service URLs
       AUTH_SERVICE_URL: https://auth-service:3001
-#      SUBSCRIPTION_SERVICE_URL: http://subscription-service:3002
-#      ADS_SERVICE_URL: http://ads-service:3004
+    #      SUBSCRIPTION_SERVICE_URL: http://subscription-service:3002
+    #      ADS_SERVICE_URL: http://ads-service:3004
 
     volumes:
-      # Monter les certificats mTLS
-      - ./scripts/certs/generated/quiz-service.crt:/etc/tls/tls.crt:ro
-      - ./scripts/certs/generated/quiz-service.key:/etc/tls/tls.key:ro
-      - ./scripts/certs/generated/ca.crt:/etc/tls/ca.crt:ro
+      # Montage certificats mTLS (SERVEUR + CLIENT)
+      # Rôle SERVEUR (reçoit du gateway)
+      - ./scripts/certs/generated/quiz-service-server.crt:/etc/mtls/certs/server.crt:ro
+      - ./scripts/certs/generated/quiz-service-server.key:/etc/mtls/certs/server.key:ro
+      # Rôle CLIENT (appelle auth-service)
+      - ./scripts/certs/generated/quiz-service-client.crt:/etc/mtls/certs/client.crt:ro
+      - ./scripts/certs/generated/quiz-service-client.key:/etc/mtls/certs/client.key:ro
+      # CA (valide les deux côtés)
+      - ./scripts/certs/generated/ca.crt:/etc/mtls/certs/ca.crt:ro
     expose:
       - "8080"
     depends_on:
       postgres-quiz:
         condition: service_healthy
+      auth-service:
+        condition: service_healthy
     networks:
       - backend-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "-k", "https://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -277,31 +286,33 @@ services:
     environment:
       # Service config
       PORT: 8000
-      RUST_LOG: info
+      RUST_LOG: ${GATEWAY_RUST_LOG:-info}
 
-      # mTLS Configuration (client side)
+      # mTLS Configuration (CLIENT uniquement - appelle les services backend)
       MTLS_ENABLED: "true"
-      MTLS_CERT_PATH: "/etc/tls/tls.crt"
-      MTLS_KEY_PATH: "/etc/tls/tls.key"
-      MTLS_CA_PATH: "/etc/tls/ca.crt"
+      MTLS_CLIENT_CERT: /etc/mtls/certs/client.crt
+      MTLS_CLIENT_KEY: /etc/mtls/certs/client.key
+      MTLS_SERVER_CA_CERT: /etc/mtls/certs/ca.crt
 
       # Service URLs (HTTPS pour mTLS)
       AUTH_SERVICE_URL: https://auth-service:3001
       QUIZ_CORE_SERVICE_URL: https://quiz-core-service:8080
-#      SUBSCRIPTION_SERVICE_URL: http://subscription-service:3002
-#      ADS_SERVICE_URL: http://ads-service:3004
+      #      SUBSCRIPTION_SERVICE_URL: http://subscription-service:3002
+      #      ADS_SERVICE_URL: http://ads-service:3004
 
       # Rate limiting
-      RATE_LIMIT_REQUESTS_PER_MINUTE: 100
+      RATE_LIMIT_REQUESTS_PER_MINUTE: ${RATE_LIMIT_RPM:-100}
 
     volumes:
-      # Monter les certificats mTLS
-      - ./scripts/certs/generated/gateway.crt:/etc/tls/tls.crt:ro
-      - ./scripts/certs/generated/gateway.key:/etc/tls/tls.key:ro
-      - ./scripts/certs/generated/ca.crt:/etc/tls/ca.crt:ro
+      # Montage certificats mTLS (CLIENT uniquement)
+      - ./scripts/certs/generated/gateway-client.crt:/etc/mtls/certs/client.crt:ro
+      - ./scripts/certs/generated/gateway-client.key:/etc/mtls/certs/client.key:ro
+      - ./scripts/certs/generated/ca.crt:/etc/mtls/certs/ca.crt:ro
     ports:
       - "8000:8000"
     depends_on:
+      auth-service:
+        condition: service_healthy
       quiz-core-service:
         condition: service_healthy
     networks:
