@@ -1,0 +1,2 @@
+certs/01-generate-ca.ps1
+certs/02-generate-service-certs.ps1
