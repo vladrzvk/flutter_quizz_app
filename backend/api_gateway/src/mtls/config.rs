@@ -3,16 +3,16 @@ use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub struct MtlsConfig {
-    /// Active ou désactive mTLS
+    /// Active ou desactive mTLS
     pub enabled: bool,
 
-    /// Certificat du serveur (PEM)
+    /// Certificat du serveur (CRT)
     pub server_cert_path: PathBuf,
 
-    /// Clé privée du serveur (PEM)
+    /// Cle privee du serveur (KEY)
     pub server_key_path: PathBuf,
 
-    /// CA racine pour valider les clients (PEM)
+    /// CA racine pour valider les clients (CRT)
     pub client_ca_cert_path: PathBuf,
 
     /// Requiert obligatoirement un certificat client
@@ -32,17 +32,18 @@ impl MtlsConfig {
             return Ok(Self::disabled());
         }
 
+        // Chemins harmonises avec docker-compose et .env
         let server_cert_path = env::var("MTLS_SERVER_CERT")
             .map(PathBuf::from)
-            .unwrap_or_else(|_| PathBuf::from("/etc/mtls/certs/server-cert.pem"));
+            .unwrap_or_else(|_| PathBuf::from("/etc/mtls/certs/server.crt"));
 
         let server_key_path = env::var("MTLS_SERVER_KEY")
             .map(PathBuf::from)
-            .unwrap_or_else(|_| PathBuf::from("/etc/mtls/certs/server-key.pem"));
+            .unwrap_or_else(|_| PathBuf::from("/etc/mtls/certs/server.key"));
 
         let client_ca_cert_path = env::var("MTLS_CLIENT_CA_CERT")
             .map(PathBuf::from)
-            .unwrap_or_else(|_| PathBuf::from("/etc/mtls/certs/ca-cert.pem"));
+            .unwrap_or_else(|_| PathBuf::from("/etc/mtls/certs/ca.crt"));
 
         let require_client_cert = env::var("MTLS_REQUIRE_CLIENT_CERT")
             .unwrap_or_else(|_| "true".to_string())
@@ -58,7 +59,7 @@ impl MtlsConfig {
         })
     }
 
-    /// Configuration désactivée par défaut
+    /// Configuration desactivee par defaut
     fn disabled() -> Self {
         Self {
             enabled: false,
